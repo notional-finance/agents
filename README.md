@@ -1,2 +1,3 @@
-# liquidator
-Liquidator for Notional Finance contracts
+# Notional Liquidator
+
+Liquidation and settlement bot for Notional Finance.

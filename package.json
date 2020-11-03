@@ -1,0 +1,22 @@
+{
+  "name": "@notional-finance/liquidator",
+  "version": "1.0.0",
+  "description": "Liquidation bot for Notional Finance",
+  "main": "index.ts",
+  "repository": "git@github.com:notional-finance/liquidator.git",
+  "author": "Jeff Wu <jeff@notional.finance>",
+  "license": "GPL-3.0",
+  "private": false,
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "eslint 'src/**/*.ts' --quiet --fix"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.6.1",
+    "@typescript-eslint/parser": "^4.6.1",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-plugin-import": "^2.22.1",
+    "typescript": "^4.0.5"
+  }
+}
