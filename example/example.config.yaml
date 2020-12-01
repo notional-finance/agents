@@ -1,0 +1,46 @@
+graphNode:
+  # Hostname for graph node, do not use a trailing slash
+  hostname: https://api.thegraph.com
+  # Indexer reference for the graph, used to monitor subgraph health
+  indexer: https://api.thegraph.com/index-node/graphql
+  # Currently does not support multiple subgraphs but that may be added in the future
+  subgraphs:
+    - name: notional-finance/mainnet
+      # Polling interval in milliseconds
+      pollingInterval: 5000
+      # Long polling interval is used for configurations that change less frequently
+      longPollingInterval: 60000
+      # The largest tolerable block lag from the graph
+      maxBlockLag: 1
+
+ethNode:
+  # Your eth node rpc provider
+  hostname: 
+  network: mainnet
+  # Default number of retries from 429 rate limits before failing
+  retries: 3
+  # Sets the polling interval when checking for log updates
+  pollingIntervalMs: 4000
+
+liquiditySources:
+  # Enables pricing of a particular liquidity source (currently this is the only supported)
+  - name: uniswapFlashLoan
+    type: UNI_FlashSwap
+    params:
+      factory: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
+
+app:
+  # Port to run the node express app on
+  port: 7879
+  apiVersion: 'v1'
+  # Enables the liquidator route (currently only option)
+  enableRoutes:
+    - liquidator
+  # Enables metrics collection at <hostname>/metrics
+  # NOTE: notional contract metrics are available at <hostname>/notional/metrics as well
+  metrics:
+    enabled: true
+    prefix: 'notional_agent'
+    defaultMetricsInterval: 10000
+    includeQueryParams: true
+    maxBlockLag: 1

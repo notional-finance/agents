@@ -14,7 +14,7 @@
     "typechain:mocks": "typechain --target=ethers-v5 --outDir test/mocks/ './test/mocks/*.json'",
     "build": "yarn run typechain && yarn run build:config && tsc -b tsconfig.build.json && tscpaths -p tsconfig.build.json -s ./src -o ./dist",
     "build:config": "yarn run ts-interface-builder src/config/configSchema.ts",
-    "build:docker": "yarn run build && docker build -t notional/agents:$(jq  -j '.version' < package.json) .",
+    "build:docker": "yarn run build && docker build -t notional/agents:$(jq  -j '.version' < package.json) -t notional/agents:latest .",
     "lint": "eslint 'src/**/*.ts' --quiet --fix",
     "generate": "graphql-codegen --config graphql-codegen.yml",
     "build:contracts": "contracts/build.sh",

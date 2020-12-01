@@ -47,16 +47,6 @@ LiquidatorRouter.getAsync('/liquidation',
 
     res.send(liquidatable.map((l) => l.toJSON()))
   })
-/**
- * POST /v1/liquidator/liquidation
- * @summary Submit liquidation transactions via stored signer
- * @tags Liquidator
- * @param {Liquidate} request.body.required - liquidation request - application/json
- * @return {array<PendingTransaction>} 200 - success response - application/json
- * @return {Error} 500 - Bad request response - application/json
- */
-// .post((req: Request, res: Response) => {
-// })
 
 /**
  * GET /v1/liquidator/liquidation/{localCurrency}
