@@ -92,16 +92,24 @@ class MetricsCollector {
     })
 
     const allMarkets = GraphClient.getClient().getCashMarkets()
-    allMarkets.forEach((m) => {
-      const marketEventFilter = { address: m.contract.address }
+    const contracts = [...new Set(allMarkets.map((m) => m.address))]
+
+    appLogger.info('initiating metrics collector for cash market contracts: ', contracts)
+    contracts.forEach((address) => {
+      const marketEventFilter = { address }
+      const m = allMarkets.find((c) => c.address === address)!
+
       provider.on(marketEventFilter, (log) => {
-        const labels = { currency: m.currencySymbol, marketKey: m.marketKey }
+        const { cashGroupId, currencySymbol } = m
         const { decimalPlaces } = GraphClient.getClient().getCurrencyBySymbol(m.currencySymbol)
         const parsed = m.contract.interface.parseLog(log)
 
         switch (parsed.name) {
           case 'AddLiquidity': {
-            const { tokens, cash, fCash } = parsed.args
+            const {
+              maturity, tokens, cash, fCash,
+            } = parsed.args
+            const labels = { currency: currencySymbol, marketKey: `${cashGroupId}:${maturity}` }
             NotionalMetrics.MARKETS.ACTIVITY.COUNT_ADD_LIQUIDITY.inc(labels)
             NotionalMetrics.MARKETS.ACTIVITY.TOTAL_ADD_LIQUIDITY_CASH.inc(
               labels, parseFloat(formatUnits(cash, decimalPlaces)),
@@ -116,7 +124,10 @@ class MetricsCollector {
           }
 
           case 'RemoveLiquidity': {
-            const { tokens, cash, fCash } = parsed.args
+            const {
+              maturity, tokens, cash, fCash,
+            } = parsed.args
+            const labels = { currency: currencySymbol, marketKey: `${cashGroupId}:${maturity}` }
             NotionalMetrics.MARKETS.ACTIVITY.COUNT_REMOVE_LIQUIDITY.inc(labels)
             NotionalMetrics.MARKETS.ACTIVITY.TOTAL_REMOVE_LIQUIDITY_CASH.inc(
               labels, parseFloat(formatUnits(cash, decimalPlaces)),
@@ -131,7 +142,8 @@ class MetricsCollector {
           }
 
           case 'TakeCurrentCash': {
-            const { cash, fCash } = parsed.args
+            const { maturity, cash, fCash } = parsed.args
+            const labels = { currency: currencySymbol, marketKey: `${cashGroupId}:${maturity}` }
             NotionalMetrics.MARKETS.ACTIVITY.COUNT_TAKE_CURRENT_CASH.inc(labels)
             NotionalMetrics.MARKETS.ACTIVITY.TOTAL_CASH_BORROW.inc(
               labels, parseFloat(formatUnits(cash, decimalPlaces)),
@@ -143,7 +155,8 @@ class MetricsCollector {
           }
 
           case 'TakefCash': {
-            const { cash, fCash } = parsed.args
+            const { maturity, cash, fCash } = parsed.args
+            const labels = { currency: currencySymbol, marketKey: `${cashGroupId}:${maturity}` }
             NotionalMetrics.MARKETS.ACTIVITY.COUNT_TAKE_FCASH.inc(labels)
             NotionalMetrics.MARKETS.ACTIVITY.TOTAL_CASH_LEND.inc(
               labels, parseFloat(formatUnits(cash, decimalPlaces)),

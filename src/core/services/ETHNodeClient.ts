@@ -37,12 +37,29 @@ try {
 const logger = log4js.getLogger('app')
 
 class RetryRPCProvider extends ethers.providers.JsonRpcProvider {
+  private static getChainId(networkName: string) {
+    switch (networkName) {
+      case 'mainnet':
+        return 1
+      case 'ropsten':
+        return 3
+      case 'rinkeby':
+        return 4
+      case 'goerli':
+        return 5
+      case 'kovan':
+        return 42
+      default:
+        return 1337
+    }
+  }
+
   constructor(
     url: string,
     public attempts: number = NODE_RETRIES,
     public networkName: string,
   ) {
-    super(url)
+    super(url, RetryRPCProvider.getChainId(networkName))
     this.pollingInterval = NODE_POLLING_INTERVAL
   }
 
