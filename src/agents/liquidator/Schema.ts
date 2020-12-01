@@ -1,17 +1,21 @@
+/* eslint-disable max-classes-per-file */
 import { BigNumber } from 'ethers'
 import { Currency, JsonSerializeable } from 'core/model/Schema'
 
 /**
  * Net currency amounts when liquidating a currency pair
+ *
  * @typedef {object} LiquidatePair
  * @property {Currency} localCurrency.required - Currency to be liquidated
  * @property {Currency} collateralCurrency - Collateral currency (may not be present) if local currency tokens
  * can be liquidated
  * @property {string} localRequired.required - Amount of local currency required to liquidate
  * @property {string} collateralPurchased.required - Amount of collateral that will be purchased as a result
- * @property {string} localTokenCashWithdrawn.required - Amount of cash from liquidity tokens that will be withdrawn from the liquidated account
+ * @property {string} localTokenCashWithdrawn.required - Amount of cash from liquidity tokens that will be withdrawn
+ * from the liquidated account
  * @property {string} tokenLiquidateFee.required - Fee paid to liquidator token liquidation action
- * @property {string} ethShortfallRecovered.required - Amount of total ETH shortfall recovered by this liquidation action
+ * @property {string} ethShortfallRecovered.required - Amount of total ETH shortfall recovered by this
+ * liquidation action
  * @property {string} effectiveExchangeRate.required - The local to collateral exchange rate from this action
  */
 export class LiquidatePair extends JsonSerializeable {
@@ -56,12 +60,14 @@ export class Liquidatable extends JsonSerializeable {
 
 /**
  * Net currency amounts when settling a currency pair
+ *
  * @typedef {object} SettlePair
  * @property {Currency} localCurrency.required - Currency with debt to be settled
  * @property {Currency} collateralCurrency - Collateral currency (may not be present) if local currency tokens
  * can be withdrawn
  * @property {string} cashBalance.required - Amount of local currency debt that needs to be settled
- * @property {string} localRequired.required - Amount of local currency required to settle the debt (accounts for liquidity tokens)
+ * @property {string} localRequired.required - Amount of local currency required to settle the debt
+ * (accounts for liquidity tokens)
  * @property {string} collateralPurchased.required - Amount of collateral that will be purchased as a result
  * @property {string} effectiveExchangeRate.required - The local to collateral exchange rate from this action
  */

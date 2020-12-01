@@ -1,0 +1,11 @@
+version: "3"
+services:
+  agents:
+    image: notional/agents:latest
+    ports:
+      - "7879:7879"
+    environment:
+      NODE_ENV: production
+      CONFIG_FILE: example.config.yaml
+    volumes:
+      - example.config.yaml:/home/node/app/example.config.yaml
