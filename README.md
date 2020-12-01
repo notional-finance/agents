@@ -18,4 +18,4 @@ After startup, the docs for the API can be found at http://<hostname>/api-docs. 
 
 # Contributing
 
-Contributions are welcome! You can find me on [Discord](https://discord.gg/62eX3K7) or email: <jeff at notional finance>.
+Contributions are welcome! You can find me on [Discord](https://discord.gg/62eX3K7) or email: jeff at notional finance.
