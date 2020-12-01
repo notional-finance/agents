@@ -231,6 +231,8 @@ export class CashMarket extends JsonSerializeable {
 
   contract: CashMarketContract
 
+  cashGroupId: number;
+
   constructor(data: CashMarketQueryResult) {
     super()
 
@@ -251,6 +253,7 @@ export class CashMarket extends JsonSerializeable {
     this.currencyName = data.cashGroup.currency.name
     this.currencySymbol = data.cashGroup.currency.symbol
     this.marketKey = data.id
+    this.cashGroupId = Number(data.cashGroup.id)
 
     this.contract = new Contract(
       this.address,

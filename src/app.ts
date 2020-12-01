@@ -64,7 +64,10 @@ expressJSDocSwagger(app)(
   },
 )
 
-// limiter https://github.com/jhurliman/node-rate-limiter
+/**
+ * Error object
+ * @typedef {object}
+ */
 
 app.use((_req: Request, res: Response) => {
   res.send('404').status(404)
