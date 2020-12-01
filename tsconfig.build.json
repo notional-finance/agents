@@ -12,11 +12,11 @@
     "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true,
     "baseUrl": "src",
+    "rootDir": "src",
     "paths": {
       "core/*": ["core/*"],
       "config/*": ["config/*"],
-      "agents/*": ["agents/*"],
-      "test/*": ["../test/*"]
+      "agents/*": ["agents/*"]
     },
     "typeRoots": [
       "../node_modules/@types",
@@ -28,6 +28,7 @@
     "forceConsistentCasingInFileNames": true,
     "downlevelIteration": true,
     "importHelpers": true,
+    "removeComments": false,
     "lib": [
       "dom",
       "es5",
@@ -35,7 +36,14 @@
       "es2015.iterable"
     ]
   },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.json"
+  ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "test/**",
+    "**/*.spec.ts",
+    "**/*.test.ts"
   ]
 }

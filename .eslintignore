@@ -1,5 +1,3 @@
-dist/
 node_modules/
-build/
 src/core/typechain
-*.log
+src/core/model/GraphTypes.ts
