@@ -152,7 +152,15 @@ class LiquidationController {
         )
       })
 
-    return LiquidationController.filterAccountsByPair(localCurrency, collateralCurrency, liquidatable) as Liquidatable[]
+    const filtered = LiquidationController.filterAccountsByPair(
+      localCurrency, collateralCurrency, liquidatable,
+    ) as Liquidatable[]
+
+    return filtered.sort((a, b) => {
+      if (a.ethDenominatedShortfall.lt(b.ethDenominatedShortfall)) return -1
+      if (a.ethDenominatedShortfall.eq(b.ethDenominatedShortfall)) return 0
+      return 1
+    }).reverse()
   }
 
   public static getSettlePairs(
