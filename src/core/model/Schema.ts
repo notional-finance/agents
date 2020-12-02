@@ -18,51 +18,53 @@ export type SchemaObject<T, K> = new (data: T) => K
 export abstract class JsonSerializeable {
   protected constructor() {}
 
-  private isBigNumber(obj: any) {
+  private static isBigNumber(obj: any) {
     if (obj.hasOwnProperty('_isBigNumber') && obj._isBigNumber) return true
     return false
   }
 
-  private isMap(obj: any) {
+  private static isMap(obj: any) {
     if (obj instanceof Map) return true
     return false
   }
 
-  private isBalances(obj: any) {
+  private static isBalances(obj: any) {
     if (obj instanceof Balances) return true
     return false
   }
 
-  private isArray(obj: any) {
+  private static isArray(obj: any) {
     if (obj instanceof Array) return true
     return false
   }
 
-  private isJSONSerializable(obj: any) {
+  private static isJSONSerializable(obj: any) {
     if (obj.hasOwnProperty('toJSON')) return true
     if (obj instanceof JsonSerializeable) return true
     return false
   }
 
+  // eslint-disable-next-line class-methods-use-this
   protected serializeKeys<T>(obj: T) {
     const objectKeys = Object.keys(obj) as Array<keyof T>
     const result = {}
 
+    // eslint-disable-next-line no-restricted-syntax
     for (const key of objectKeys) {
       const value = obj[key]
       if (typeof value === 'function') continue
 
       if (typeof value === 'object') {
-        if (this.isBigNumber(value)) {
+        if (JsonSerializeable.isBigNumber(value)) {
           result[key as string] = (value as unknown as BigNumber).toHexString()
-        } else if (this.isBalances(value)) {
+        } else if (JsonSerializeable.isBalances(value)) {
           const serialized = {};
           (value as unknown as Balances).forEach((v: Balance, k: string) => {
             serialized[k] = v.toJSON()
           })
 
           result[key as string] = serialized
-        } else if (this.isMap(value)) {
+        } else if (JsonSerializeable.isMap(value)) {
           const map = (value as unknown as Map<string, JsonSerializeable>)
           const serialized = {}
           map.forEach((v, k) => {
@@ -70,11 +72,16 @@ export abstract class JsonSerializeable {
           })
 
           result[key as string] = serialized
-        } else if (this.isArray(value)) {
+        } else if (JsonSerializeable.isArray(value)) {
           result[key as string] = (value as unknown as Array<JsonSerializeable>)
             .map((v) => v.toJSON())
-        } else if (this.isJSONSerializable(value)) {
+        } else if (JsonSerializeable.isJSONSerializable(value)) {
           result[key as string] = (value as unknown as JsonSerializeable).toJSON()
+        } else {
+          const allValues = Object.values(value)
+          if (allValues.filter((v) => typeof v === 'string').length === allValues.length) {
+            result[key as string] = value
+          }
         }
       } else {
         result[key as string] = value
