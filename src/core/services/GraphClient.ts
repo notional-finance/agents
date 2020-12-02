@@ -205,7 +205,7 @@ class GraphClient {
       apolloClient,
       CurrenciesArrayQuery,
       CurrencyArray,
-      longPollingInterval,
+      pollingInterval,
       this.clientDidInit.bind(this),
     )
 

@@ -305,12 +305,16 @@ class LiquidationController {
     const { portfolios } = ETHNodeClient.getClient().contracts
     const liquidatable = await LiquidationController.getLiquidatable()
     const limiter = new RateLimiter(RECONCILIATION_RATE_LIMIT, 'second')
+    const blockNumber = await ETHNodeClient.getClient().provider.getBlockNumber()
     let reconErrors = 0
     let accountsReconciled = 0
+    appLogger.info(`Running reconciliation at block number ${blockNumber}`)
 
     allAccounts.forEach((a) => {
       limiter.removeTokens(1, () => {
-        portfolios.freeCollateralView(a.address)
+        // We make all the collateral calls at the same block number so that
+        // we don't get any false positives
+        portfolios.freeCollateralView(a.address, { blockTag: blockNumber })
           .then((fc) => {
             if (fc[0].isNegative()) {
               const found = liquidatable.find((l) => l.address === a.address)
