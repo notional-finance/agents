@@ -13,28 +13,31 @@ const daiAddress = '0x6b175474e89094c44da98b954eedeac495271d0f'
 async function deployContract(owner: Wallet, artifact: any, args: any[]) {
   const factory = new ContractFactory(artifact.abi, artifact.bytecode, owner)
   const txn = factory.getDeployTransaction(...args)
-  console.log(`Deploying ${artifact.contractName} with owner ${owner.address}...`)
+  console.log(`Deploying ${artifact.contractName} with owner ${owner.address}`)
   const receipt = await (await owner.sendTransaction(txn)).wait()
   const contract = new Contract(receipt.contractAddress as string, artifact.abi, owner)
-  console.log(`Successfully deployed ${artifact.contractName} at ${contract.address}...`)
+  console.log(`Successfully deployed ${artifact.contractName} at ${contract.address}`)
 
   return contract
 }
 
 async function main() {
-  const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL)
-  // Alternatively, ownership can be transferred via:
-  // await flashSwapContract.transferOwnership(newOwner)
+  const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL as string)
   const owner = new Wallet(process.env.CONTRACT_OWNER_PK as string, provider)
   const flashSwapContract = await deployContract(owner, UniFlashSwapArtifact, [uniswapFactoryV2Address, escrowAddress])
-
+  // Alternatively, ownership can be transferred via:
   // Must enable token allowance for Escrow contract
-  await flashSwapContract.enableToken(daiAddress, ethers.constants.MaxUint256)
+  console.log(`Enabling ${daiAddress} token on flashSwap contract`)
+  await (await flashSwapContract.enableToken(daiAddress, ethers.constants.MaxUint256)).wait(3)
+
+  // await flashSwapContract.transferOwnership(newOwner)
+  console.log(`Transferring ownership to ${process.env.NEW_OWNER}`)
+  await (await flashSwapContract.transferOwnership(process.env.NEW_OWNER as string)).wait(3)
 }
 
 main()
   .then(() => process.exit(0))
-  .catch(() => {
-    console.log('error')
+  .catch((error) => {
+    console.log(error)
     process.exit(1)
   })

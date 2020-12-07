@@ -22,7 +22,8 @@
     "test": "jest --selectProjects unit",
     "test:watch": "yarn run jest --selectProjects unit --config=jest.config.js --watch",
     "test:integration": "./start.sh && export RUN_SETUP=true && jest --runInBand --selectProjects integration --config=jest.config.js --detectOpenHandles",
-    "test:integration:run": "jest --config=jest.config.js --runInBand --selectProjects integration --detectOpenHandles"
+    "test:integration:run": "jest --config=jest.config.js --runInBand --selectProjects integration --detectOpenHandles",
+    "deploy:flashswap": "yarn run ts-node -r tsconfig-paths/register contracts/deploy.ts"
   },
   "engines": {
     "node": ">=12.0.0"
