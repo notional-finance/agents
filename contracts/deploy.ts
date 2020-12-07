@@ -7,6 +7,8 @@ const uniswapFactoryV2Address = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
 const escrowAddress = '0x9abd0b8868546105F6F48298eaDC1D9c82f7f683'
 // Mainnet Dai Address
 const daiAddress = '0x6b175474e89094c44da98b954eedeac495271d0f'
+// Notional Kovan Test Dai address
+// const daiAddress = '0x181D62Ff8C0aEeD5Bc2Bf77A88C07235c4cc6905'
 
 async function deployContract(owner: Wallet, artifact: any, args: any[]) {
   const factory = new ContractFactory(artifact.abi, artifact.bytecode, owner)
