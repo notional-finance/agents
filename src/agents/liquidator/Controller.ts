@@ -11,10 +11,17 @@ import { convertToETH } from 'core/lib/ExchangeRate'
 import ETHNodeClient from 'core/services/ETHNodeClient'
 import { RECONCILIATION_RATE_LIMIT } from 'config/config'
 import {
-  Liquidatable, LiquidatePair, Settleable, SettlePair,
+  Liquidatable,
+  LiquidatePair,
+  Settleable,
+  SettlePair,
 } from './Schema'
 import {
-  adjustNetAvailable, calculateCollateralPurchase, effectiveExchangeRate, totalCashClaim, totalHaircutCashClaim,
+  adjustNetAvailable,
+  calculateCollateralPurchase,
+  effectiveExchangeRate,
+  totalCashClaim,
+  totalHaircutCashClaim,
 } from './lib/Generic'
 import { getLiquidatePair } from './lib/Liquidation'
 
@@ -203,6 +210,7 @@ class LiquidationController {
         const collateralCurrency = GraphClient.getClient().getCurrencyBySymbol(collateral)
         const { settlementDiscount } = GraphClient.getClient().getSystemConfiguration()
 
+        // This function will adjust for fCash balances
         const {
           localPurchased,
           collateralPurchased,
@@ -257,7 +265,7 @@ class LiquidationController {
           }
         }
 
-        // Adjusted positive collateral can be settled against
+        // Adjusted positive collateral can be settled against (this excludes fCash balances)
         // eslint-disable-next-line no-restricted-syntax
         for (const key of factors.keys()) {
           const adjustedNetAvailable = adjustNetAvailable(key, factors.get(key)!, account)
@@ -290,7 +298,6 @@ class LiquidationController {
           aggregateFC,
         ),
       ))
-
     return LiquidationController.filterAccountsByPair(localCurrency, collateralCurrency, settleable) as Settleable[]
   }
 
@@ -323,6 +330,7 @@ class LiquidationController {
 
     // Wait for reconciliation to finish
     while (accountsReconciled < allAccounts.length) {
+      // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => setTimeout(r, 3000))
     }
 

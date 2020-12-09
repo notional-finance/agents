@@ -5,7 +5,9 @@ import GraphClient from 'core/services/GraphClient'
 import { BigNumber, ethers } from 'ethers'
 import { parseEther } from 'ethers/lib/utils'
 import { LiquidatePair } from '../Schema'
-import { totalCashClaim, calculateCollateralPurchase, effectiveExchangeRate } from './Generic'
+import {
+  totalCashClaim, calculateCollateralPurchase, effectiveExchangeRate, isfCashEligible, getfCashPair,
+} from './Generic'
 
 const LIQUIDATION_BUFFER = parseEther('1.01')
 
@@ -64,6 +66,12 @@ function calculateLocalCurrencyToTrade(
     : localToTrade
 }
 
+function fcAggregateToLocal(ethShortfall: BigNumber, localCurrency: Currency) {
+  return convertETHTo(ethShortfall, localCurrency, false)
+    .mul(LIQUIDATION_BUFFER)
+    .div(ethers.constants.WeiPerEther)
+}
+
 export function getLiquidatePair(
   localCurrency: Currency,
   collateralCurrency: Currency | undefined,
@@ -71,13 +79,41 @@ export function getLiquidatePair(
   account: Account,
   ethShortfall: BigNumber,
 ) {
-  const localRequired = convertETHTo(ethShortfall, localCurrency, false)
-    .mul(LIQUIDATION_BUFFER)
-    .div(ethers.constants.WeiPerEther)
-
+  const localRequired = fcAggregateToLocal(ethShortfall, localCurrency)
+  const { liquidationDiscount } = GraphClient.getClient().getSystemConfiguration()
   const {
     netAvailable: localNetAvailable,
   } = factors.get(localCurrency.symbol)!
+
+  if (collateralCurrency && isfCashEligible(account, factors, collateralCurrency)) {
+    // If the account is eligible for fCash liquidation then we short circuit and return here
+    const { localPurchased, fCashPurchased } = getfCashPair(
+      account,
+      localRequired,
+      localCurrency,
+      collateralCurrency,
+      factors,
+      liquidationDiscount,
+    )
+
+    // This is the discounted value that the fCash was purchased at
+    const fCashValue = fCashPurchased.reduce((b, a) => b.add(a.discountValue), BigNumber.from(0))
+    const ethShortfallRecovered = localPurchased.eq(localRequired)
+      ? ethShortfall
+      : localPurchased.mul(ethShortfall).div(localRequired)
+
+    return new LiquidatePair(
+      localCurrency,
+      collateralCurrency,
+      localPurchased,
+      BigNumber.from(0),
+      BigNumber.from(0),
+      BigNumber.from(0),
+      ethShortfallRecovered,
+      effectiveExchangeRate(localPurchased, fCashValue, collateralCurrency),
+      fCashPurchased,
+    )
+  }
 
   const totalLocalCashClaim = totalCashClaim(localCurrency.symbol, account.portfolio)
 
@@ -107,7 +143,6 @@ export function getLiquidatePair(
 
   let collateralPurchased: BigNumber
   if (collateralCurrency && newNetAvailable.lt(0) && factors.has(collateralCurrency.symbol)) {
-    const { liquidationDiscount } = GraphClient.getClient().getSystemConfiguration()
     const localToTrade = calculateLocalCurrencyToTrade(
       localPurchased,
       liquidationDiscount,

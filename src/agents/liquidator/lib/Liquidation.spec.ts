@@ -401,4 +401,8 @@ describe('Liquidation', () => {
       expect(pair.collateralPurchased).toEq(parseEther('1.1'))
     })
   })
+
+  describe('liquidate fcash', () => {
+
+  })
 })

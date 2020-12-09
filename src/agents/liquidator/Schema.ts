@@ -3,6 +3,30 @@ import { BigNumber } from 'ethers'
 import { Currency, JsonSerializeable } from 'core/model/Schema'
 
 /**
+ * Represents an amount of fCash that will be purchased in a settle or liquidate action
+ *
+ * @typedef {object} FCashPurchase
+ * @property {integer} maturity.required - Unix timestamp in seconds of the maturity
+ * @property {integer} marketKey.required - Internal market key for the asset
+ * @property {string} notional.required - Notional amount of the fCash asset
+ * @property {string} discountValue.required - Discounted notional amount that it was purchased at
+ */
+export class FCashPurchase extends JsonSerializeable {
+  constructor(
+    public maturity: number,
+    public marketKey: string,
+    public notional: BigNumber,
+    public discountValue: BigNumber,
+  ) {
+    super()
+  }
+
+  toJSON() {
+    return this.serializeKeys<FCashPurchase>(this)
+  }
+}
+
+/**
  * Net currency amounts when liquidating a currency pair
  *
  * @typedef {object} LiquidatePair
@@ -17,6 +41,8 @@ import { Currency, JsonSerializeable } from 'core/model/Schema'
  * @property {string} ethShortfallRecovered.required - Amount of total ETH shortfall recovered by this
  * liquidation action
  * @property {string} effectiveExchangeRate.required - The local to collateral exchange rate from this action
+ * @property {array} fCashPurchased - Array of fcash assets that will be purchased as a result. If this is filled in
+ * then the account must be liquidated via the `Escrow.liquidatefCash` method
  */
 export class LiquidatePair extends JsonSerializeable {
   constructor(
@@ -28,6 +54,7 @@ export class LiquidatePair extends JsonSerializeable {
     public tokenLiquidateFee: BigNumber,
     public ethShortfallRecovered: BigNumber,
     public effectiveExchangeRate: BigNumber,
+    public fCashPurchased?: FCashPurchase[],
   ) {
     super()
   }
