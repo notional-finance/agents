@@ -400,9 +400,55 @@ describe('Liquidation', () => {
       expect(pair.localRequired).toEq(BigNumber.from('103773584905660377358'))
       expect(pair.collateralPurchased).toEq(parseEther('1.1'))
     })
-  })
 
-  describe('liquidate fcash', () => {
+    it('calculates liquidate fcash', () => {
+      const dai = GraphClient.getClient().getCurrencyBySymbol('DAI')
+      const usdc = GraphClient.getClient().getCurrencyBySymbol('USDC')
 
+      const { account, factors } = MockAccount(
+        [
+          MockBalance('DAI', parseEther('-200')),
+        ],
+        [
+          MockAsset(
+            AssetType.CashReceiver,
+            defaultMaturity,
+            'USDC',
+            BigNumber.from(50e6),
+          ),
+          MockAsset(
+            AssetType.CashReceiver,
+            defaultMaturity + 100000,
+            'USDC',
+            BigNumber.from(400e6),
+          ),
+        ],
+      )
+
+      const pair = getLiquidatePair(
+        dai,
+        usdc,
+        factors,
+        account,
+        parseEther('1'),
+      )
+
+      expect(pair.localRequired).toEq(parseEther('101'))
+      expect(pair.collateralPurchased).toEq(BigNumber.from(0))
+      expect(pair.localTokenCashWithdrawn).toEq(BigNumber.from(0))
+      expect(pair.tokenLiquidateFee).toEq(BigNumber.from(0))
+      expect(pair.ethShortfallRecovered).toEq(parseEther('1'))
+      expect(pair.fCashPurchased!.length).toBe(2)
+
+      expect(pair.fCashPurchased![0].marketKey).toBe(account.portfolio[0].marketKey)
+      expect(pair.fCashPurchased![1].marketKey).toBe(account.portfolio[1].marketKey)
+      expect(pair.fCashPurchased![0].maturity).toBe(account.portfolio[0].maturity)
+      expect(pair.fCashPurchased![1].maturity).toBe(account.portfolio[1].maturity)
+
+      expect(pair.fCashPurchased![0].notional).toBe(account.portfolio[0].notional)
+      expect(BigNumber.from(107.06e6).sub(
+          pair.fCashPurchased![0].discountValue.add(pair.fCashPurchased![1].discountValue),
+      ).abs().lte(1)).toBe(true)
+    })
   })
 })
