@@ -97,6 +97,8 @@ export class Liquidatable extends JsonSerializeable {
  * (accounts for liquidity tokens)
  * @property {string} collateralPurchased.required - Amount of collateral that will be purchased as a result
  * @property {string} effectiveExchangeRate.required - The local to collateral exchange rate from this action
+ * @property {array} fCashPurchased - Array of fcash assets that will be purchased as a result. If this is filled in
+ * then the account must be settled via the `Escrow.settlefCash` method
  */
 export class SettlePair extends JsonSerializeable {
   constructor(
@@ -106,6 +108,7 @@ export class SettlePair extends JsonSerializeable {
     public localRequired: BigNumber,
     public collateralPurchased: BigNumber,
     public effectiveExchangeRate: BigNumber,
+    public fCashPurchased?: FCashPurchase[],
   ) {
     super()
   }

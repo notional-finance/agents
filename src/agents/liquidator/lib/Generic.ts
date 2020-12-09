@@ -219,28 +219,38 @@ export function getfCashPair(
   factors: FreeCollateralFactors,
   discountFactor: BigNumber,
 ) {
-  const { exchangeRate, collateralToSell } = calculateCollateralToSell(
-    discountFactor,
-    localRequired,
-    localCurrency,
-    collateralCurrency,
-  )
-  const { netAvailable: collateralNetAvailable } = factors.get(collateralCurrency.symbol)!
-
   let localPurchased: BigNumber
   let collateralPurchased: BigNumber
-  if (collateralToSell.gt(collateralNetAvailable)) {
-    localPurchased = calculateLocalPurchased(
+  let exchangeRate: BigNumber
+  if (localCurrency.id === collateralCurrency.id) {
+    // Here we do not have to handle exchange rates because the settlement is in local currency
+    // form only
+    localPurchased = localRequired
+    collateralPurchased = localRequired
+    exchangeRate = localCurrency.decimals
+  } else {
+    let collateralToSell
+    ({ exchangeRate, collateralToSell } = calculateCollateralToSell(
       discountFactor,
-      collateralNetAvailable,
-      exchangeRate,
+      localRequired,
       localCurrency,
       collateralCurrency,
-    )
-    collateralPurchased = collateralNetAvailable
-  } else {
-    localPurchased = localRequired
-    collateralPurchased = collateralToSell
+    ))
+    const { netAvailable: collateralNetAvailable } = factors.get(collateralCurrency.symbol)!
+
+    if (collateralToSell.gt(collateralNetAvailable)) {
+      localPurchased = calculateLocalPurchased(
+        discountFactor,
+        collateralNetAvailable,
+        exchangeRate,
+        localCurrency,
+        collateralCurrency,
+      )
+      collateralPurchased = collateralNetAvailable
+    } else {
+      localPurchased = localRequired
+      collateralPurchased = collateralToSell
+    }
   }
 
   // Calculates how much fCash in the collateral currency we will purchase.
