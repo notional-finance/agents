@@ -62,10 +62,11 @@ describe('net currency available', () => {
     expect(netfCash).toEq(parseEther('-100'))
   })
 
-  it('calculates net matured asset values', () => {
+  it('skips matured assets (already included in cash balance)', () => {
     const balances = new Balances([
-      ['DAI', MockBalance('DAI', parseEther('100'))],
+      ['DAI', MockBalance('DAI', parseEther('0'))],
     ])
+
     const { netAvailable, cashClaim, netfCash } = netCurrencyAvailable(
       balances.get('DAI'),
       [
@@ -79,7 +80,7 @@ describe('net currency available', () => {
     )
 
     expect(netAvailable).toEq(parseEther('0'))
-    expect(cashClaim).toEq(parseEther('-100'))
+    expect(cashClaim).toEq(parseEther('0'))
     expect(netfCash).toEq(parseEther('0'))
   })
 })
