@@ -9,7 +9,8 @@ import { calculateFreeCollateral, FreeCollateralFactors } from 'core/lib/FreeCol
 import { BigNumber } from 'ethers'
 import { convertToETH } from 'core/lib/ExchangeRate'
 import ETHNodeClient from 'core/services/ETHNodeClient'
-import { RECONCILIATION_RATE_LIMIT } from 'config/config'
+import { METRICS, RECONCILIATION_RATE_LIMIT } from 'config/config'
+import NotionalMetrics from 'agents/metrics/NotionalMetrics'
 import {
   Liquidatable,
   LiquidatePair,
@@ -359,6 +360,10 @@ class LiquidationController {
     while (accountsReconciled < allAccounts.length) {
       // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => setTimeout(r, 3000))
+    }
+
+    if (METRICS.enabled) {
+      NotionalMetrics.ACCOUNTS.RECONCILIATION_ERRORS.set(reconErrors)
     }
 
     return reconErrors
