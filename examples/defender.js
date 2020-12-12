@@ -43,6 +43,7 @@ async function attemptLiquidate(account, signer) {
     console.log(`Called uniswap with txHash: ${tx.hash}`);
   } catch (error) {
     console.error(`Transaction error liquidating account ${account.address}`, error);
+    throw error
   }
 }
 
