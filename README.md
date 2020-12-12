@@ -8,6 +8,8 @@ An example configuration file and docker-compose.yml can be found in the example
 
 If deploying in Kubernetes, a sample helm chart is included in `example/notional-agent-helm`.
 
+The Docker image is published at `https://hub.docker.com/repository/docker/notional/agents`
+
 ## API Docs
 
 After startup, the docs for the API can be found at http://<hostname>/api-docs. This is an auto-generated Swagger doc.
