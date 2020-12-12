@@ -8,6 +8,7 @@ import {
 import { AssetType } from 'core/model/GraphTypes'
 import { DEFAULT_SUBGRAPH } from 'config/config'
 import { calculateTokenLiquidation, getLiquidatePair } from './Liquidation'
+import LiquidationController from '../Controller'
 
 expect.extend(BNExpects)
 
@@ -399,6 +400,128 @@ describe('Liquidation', () => {
 
       expect(pair.localRequired).toEq(BigNumber.from('103773584905660377358'))
       expect(pair.collateralPurchased).toEq(parseEther('1.1'))
+    })
+
+    it('calculates liquidate fcash', () => {
+      const dai = GraphClient.getClient().getCurrencyBySymbol('DAI')
+      const usdc = GraphClient.getClient().getCurrencyBySymbol('USDC')
+
+      const { account, factors } = MockAccount(
+        [
+          MockBalance('DAI', parseEther('-200')),
+        ],
+        [
+          MockAsset(
+            AssetType.CashReceiver,
+            defaultMaturity,
+            'USDC',
+            BigNumber.from(50e6),
+          ),
+          MockAsset(
+            AssetType.CashReceiver,
+            defaultMaturity + 100000,
+            'USDC',
+            BigNumber.from(400e6),
+          ),
+        ],
+      )
+
+      const pair = getLiquidatePair(
+        dai,
+        usdc,
+        factors,
+        account,
+        parseEther('1'),
+      )
+
+      expect(pair.localRequired).toEq(parseEther('101'))
+      expect(pair.collateralPurchased).toEq(BigNumber.from(0))
+      expect(pair.localTokenCashWithdrawn).toEq(BigNumber.from(0))
+      expect(pair.tokenLiquidateFee).toEq(BigNumber.from(0))
+      expect(pair.ethShortfallRecovered).toEq(parseEther('1'))
+      expect(pair.fCashPurchased!.length).toBe(2)
+
+      expect(pair.fCashPurchased![0].marketKey).toBe(account.portfolio[0].marketKey)
+      expect(pair.fCashPurchased![1].marketKey).toBe(account.portfolio[1].marketKey)
+      expect(pair.fCashPurchased![0].maturity).toBe(account.portfolio[0].maturity)
+      expect(pair.fCashPurchased![1].maturity).toBe(account.portfolio[1].maturity)
+
+      expect(pair.fCashPurchased![0].notional).toBe(account.portfolio[0].notional)
+      expect(BigNumber.from(107.06e6).sub(
+          pair.fCashPurchased![0].discountValue.add(pair.fCashPurchased![1].discountValue),
+      ).abs().lte(1)).toBe(true)
+    })
+  })
+
+  describe('settlement pairs', () => {
+    it('calculates settle currency', () => {
+
+    })
+
+    it('calculates settle fcash local currency', () => {
+      const { account, factors } = MockAccount(
+        [
+          MockBalance('DAI', parseEther('-100')),
+        ],
+        [
+          MockAsset(
+            AssetType.CashReceiver,
+            defaultMaturity,
+            'DAI',
+            parseEther('250'),
+          ),
+        ],
+      )
+
+      const pairs = LiquidationController.getSettlePairs(
+        account,
+        ['DAI'],
+        ['DAI'],
+        factors,
+        parseEther('1'),
+      )
+
+      expect(pairs[0].cashBalance).toEq(parseEther('100'))
+      expect(pairs[0].localRequired).toEq(parseEther('100'))
+      expect(pairs[0].fCashPurchased!).toHaveLength(1)
+      expect(parseEther('100').sub(pairs[0].fCashPurchased![0].discountValue).abs().lte(1)).toBe(true)
+    })
+
+    it('calculates settle fcash collateral currency', () => {
+      const { account, factors } = MockAccount(
+        [
+          MockBalance('DAI', parseEther('-200')),
+        ],
+        [
+          MockAsset(
+            AssetType.CashReceiver,
+            defaultMaturity,
+            'USDC',
+            BigNumber.from(50e6),
+          ),
+          MockAsset(
+            AssetType.CashReceiver,
+            defaultMaturity + 100000,
+            'USDC',
+            BigNumber.from(400e6),
+          ),
+        ],
+      )
+
+      const pairs = LiquidationController.getSettlePairs(
+        account,
+        ['DAI'],
+        ['USDC'],
+        factors,
+        parseEther('1'),
+      )
+
+      expect(pairs[0].cashBalance).toEq(parseEther('200'))
+      expect(pairs[0].localRequired).toEq(parseEther('200'))
+      expect(pairs[0].fCashPurchased!).toHaveLength(2)
+      expect(BigNumber.from(204e6).sub(
+          pairs[0].fCashPurchased![0].discountValue.add(pairs[0].fCashPurchased![1].discountValue),
+      ).abs().lte(1)).toBe(true)
     })
   })
 })

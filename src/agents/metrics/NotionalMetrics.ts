@@ -62,6 +62,11 @@ const NotionalMetrics = {
       labelNames: ['currencyPair'],
       registers: [NotionalMetricsRegistry],
     }),
+    RECONCILIATION_ERRORS: new client.Gauge({
+      name: 'notional_accounts_reconciliation_errors',
+      help: 'total reconciliation errors',
+      registers: [NotionalMetricsRegistry],
+    }),
   },
   BALANCES: {
     EXCHANGE_RATE_ETH: new client.Gauge({

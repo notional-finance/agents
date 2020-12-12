@@ -1,11 +1,11 @@
 {
   "name": "@notional-finance/agent",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Agents for Notional Finance",
   "main": "index.ts",
   "repository": "git@github.com:notional-finance/agents.git",
   "author": "Jeff Wu <jeff@notional.finance>",
-  "license": "GPL-3.0-only",
+  "license": "MIT",
   "private": false,
   "scripts": {
     "start": "ts-node -r tsconfig-paths/register ./src/app.ts",
@@ -22,7 +22,8 @@
     "test": "jest --selectProjects unit",
     "test:watch": "yarn run jest --selectProjects unit --config=jest.config.js --watch",
     "test:integration": "./start.sh && export RUN_SETUP=true && jest --runInBand --selectProjects integration --config=jest.config.js --detectOpenHandles",
-    "test:integration:run": "jest --config=jest.config.js --runInBand --selectProjects integration --detectOpenHandles"
+    "test:integration:run": "jest --config=jest.config.js --runInBand --selectProjects integration --detectOpenHandles",
+    "deploy:flashswap": "yarn run ts-node -r tsconfig-paths/register contracts/deploy.ts"
   },
   "engines": {
     "node": ">=12.0.0"

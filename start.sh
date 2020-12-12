@@ -2,6 +2,7 @@
 rm -Rf build
 cp -R ~/code/swapnet-lite/packages/subgraph/build build
 export AGENT_VERSION=`jq -r '.version' package.json`
+export FACTORY_ADDRESS=`yq -r '.liquiditySources[0].params.factory' compose.config.yaml`
 
 docker-compose down
 docker-compose up -d

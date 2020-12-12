@@ -9,6 +9,7 @@ import { BigNumber } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
 import { convertToETH } from 'core/lib/ExchangeRate'
 import { AssetType } from 'core/model/GraphTypes'
+import { FCashPurchase } from 'agents/liquidator/Schema'
 import NotionalMetrics, { NotionalMetricsRegistry } from './NotionalMetrics'
 
 const appLogger = log4js.getLogger('app')
@@ -246,13 +247,19 @@ class MetricsCollector {
     pairable: {
       pairs: {
         localCurrency: Currency,
-        collateralCurrency: Currency | undefined
+        collateralCurrency: Currency | undefined,
+        fCashPurchased?: FCashPurchase[]
       }[]
     }[],
     metric: client.Gauge<'currencyPair'>,
+    countfCash: boolean,
   ) {
     const result = pairable.reduce((allPairs, l) => {
       l.pairs
+        .filter((p) => {
+          const isfCash = p.fCashPurchased !== undefined && p.fCashPurchased.length > 0
+          return countfCash ? isfCash : !isfCash
+        })
         .map((p) => (p.collateralCurrency
           ? `${p.localCurrency.symbol}-${p.collateralCurrency?.symbol}`
           : `${p.localCurrency.symbol}`))
@@ -286,10 +293,10 @@ class MetricsCollector {
 
     NotionalMetrics.ACCOUNTS.TOTAL.set(allAccounts!.length)
     NotionalMetrics.ACCOUNTS.LIQUIDATABLE.set(liquidatable!.length)
-    MetricsCollector.countCurrencyPairs(liquidatable, NotionalMetrics.ACCOUNTS.LIQUIDATABLE)
-    MetricsCollector.countCurrencyPairs(settleable, NotionalMetrics.ACCOUNTS.SETTLEABLE)
-    // TODO: settle fcash
-    // TODO: liquidate fcash
+    MetricsCollector.countCurrencyPairs(liquidatable, NotionalMetrics.ACCOUNTS.LIQUIDATABLE, false)
+    MetricsCollector.countCurrencyPairs(settleable, NotionalMetrics.ACCOUNTS.SETTLEABLE, false)
+    MetricsCollector.countCurrencyPairs(liquidatable, NotionalMetrics.ACCOUNTS.LIQUIDATE_FCASH, true)
+    MetricsCollector.countCurrencyPairs(settleable, NotionalMetrics.ACCOUNTS.SETTLE_FCASH, true)
   }
 
   private static async fetchBalanceGauges() {

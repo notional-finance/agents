@@ -44,6 +44,6 @@ services:
     environment:
       NODE_ENV: development
       CONFIG_FILE: compose.config.yaml
-      FACTORY_ADDRESS: '0x6f84742680311CEF5ba42bc10A71a4708b4561d1'
+      FACTORY_ADDRESS: '${FACTORY_ADDRESS}'
     volumes:
       - ${PWD}/compose.config.yaml:/home/node/app/compose.config.yaml

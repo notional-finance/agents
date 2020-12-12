@@ -1,0 +1,121 @@
+# Default values for notional-agent-helm.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+agent:
+  # The Ethereum network that this agent will run on 
+  network: mainnet
+  configFile: config.yaml
+  configMapName: notional-agent-config
+
+  graphNode:
+    # Do not put a trailing slash here
+    hostname: https://api.thegraph.com
+    indexer: https://api.thegraph.com/index-node/graphql
+    subgraphs:
+      - name: notional-finance/mainnet
+        pollingInterval: 60000
+        longPollingInterval: 1800000
+        maxBlockLag: 1
+  ethNode:
+    # Specify an ethnode host name here
+    hostname: 
+    retries: 3
+    pollingIntervalMs: 6000
+
+  # Specify liquidity sources here
+  liquiditySources:
+    - name: uniswapFlashLoan
+      type: UNI_FlashSwap
+      params:
+        # This must have two sets of quotes to preserve the string
+        # https://github.com/helm/helm/issues/4262
+        factory: '"0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"'
+        pairs:
+          - DAI-WETH
+          - USDC-WETH
+          - WBTC-WETH
+
+  app:
+    port: 7879
+    apiVersion: 'v1'
+    enableRoutes:
+      - liquidator
+    metrics:
+      enabled: true
+      prefix: 'notional_agent'
+      defaultMetricsInterval: 10000
+      includeQueryParams: true
+      maxBlockLag: 1
+
+probes:
+  liveness:
+    timeoutSeconds: 3
+    failureThreshold: 5
+    periodSeconds: 30
+  metrics:
+    periodSeconds: 10s
+  notionalMetrics:
+    periodSeconds: 30s
+
+replicaCount: 1
+
+image:
+  repository: notional/agents
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+service:
+  type: ClusterIP
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

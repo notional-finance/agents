@@ -11,7 +11,6 @@ import { DEFAULT_SUBGRAPH } from 'config/config'
 import setup from './setup'
 import BNExpects from './utils/BNExpects'
 import defaultAccounts from './defaultAccounts.json'
-import UniFlashSwapArtifact from './mocks/UniFlashSwap.json'
 import { UniFlashSwap } from './mocks/UniFlashSwap'
 import IUniswapV2PairArtifact from './mocks/IUniswapV2Pair.json'
 import { IUniswapV2Pair } from './mocks/IUniswapV2Pair'
@@ -48,6 +47,7 @@ describe('Liquidation', () => {
   let weth: Currency
   let daiContract: IERC20
   let wethContract: IERC20
+  let flashContract: UniFlashSwap
 
   beforeAll(async () => {
     await new Promise((resolve) => {
@@ -62,7 +62,7 @@ describe('Liquidation', () => {
     wethContract = ETHNodeClient.getClient().getToken(weth.address)
 
     if (process.env.RUN_SETUP) {
-      await setup(
+      flashContract = await setup(
         owner,
         tokenOnly,
         tokenCollateral,
@@ -154,11 +154,6 @@ describe('Liquidation', () => {
     it('liquidates via flash swap', async () => {
       const account = daiWeth.find((a) => a.address === flashSwapTokenCollateral.address.toLowerCase())
       const localRequired = BigNumber.from(account.pairs[0].localRequired)
-      const flashContract = new Contract(
-        '0x995629b19667Ae71483DC812c1B5a35fCaaAF4B8',
-        UniFlashSwapArtifact.abi,
-        owner,
-      ) as UniFlashSwap
       const wethBalanceBefore = await wethContract.balanceOf(flashContract.address)
 
       const { data } = await axios.get(
@@ -247,11 +242,6 @@ describe('Liquidation', () => {
     it('settles via flash swap', async () => {
       const account = daiWethSettle.find((a) => a.address === flashSwapTokenCollateral.address.toLowerCase())
       const localRequired = BigNumber.from(account.pairs[0].localRequired)
-      const flashContract = new Contract(
-        '0x995629b19667Ae71483DC812c1B5a35fCaaAF4B8',
-        UniFlashSwapArtifact.abi,
-        owner,
-      ) as UniFlashSwap
       const wethBalanceBefore = await wethContract.balanceOf(flashContract.address)
 
       const { data } = await axios.get(

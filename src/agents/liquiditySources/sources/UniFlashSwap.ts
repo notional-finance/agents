@@ -1,6 +1,6 @@
 import log4js from 'log4js'
 import {
-  ChainId, Token, Fetcher, Route, Trade, TokenAmount, TradeType, Pair,
+  ChainId, Token, Fetcher, Route, Trade, TokenAmount, TradeType, Pair, FACTORY_ADDRESS,
 } from '@uniswap/sdk'
 import GraphClient from 'core/services/GraphClient'
 import { ETH_NETWORK } from 'config/config'
@@ -48,8 +48,10 @@ class UniFlashSwap extends LiquiditySource {
 
   constructor(
     address: string,
+    pairs: string[],
   ) {
     super(LiquiditySourceType.UNI_FlashSwap, true, address)
+    appLogger.info(`Starting uniswap factory at address ${address} with pairs`, pairs)
     const currencies = GraphClient.getClient().getCurrencies()
     this.tokens = new Map(currencies.map((c) => [c.symbol, new Token(
       UniFlashSwap.getChainId(ETH_NETWORK),
@@ -60,8 +62,11 @@ class UniFlashSwap extends LiquiditySource {
     )]))
 
     this.pairs = new Map<string, [Token, Token]>()
-    // TODO: move this to configuration
-    this.setPair('DAI', 'WETH')
+    pairs.forEach((p) => {
+      const [a, b] = p.split('-')
+      appLogger.info('pair is', a, b)
+      this.setPair(a, b)
+    })
   }
 
   private async getPair(input: string, output: string) {
@@ -106,7 +111,10 @@ class UniFlashSwap extends LiquiditySource {
       .map(async ([key, [token0, token1]]) => {
         const [input, output] = key.split('-')
         const pairAddress = Pair.getAddress(token0, token1)
-        const pairData = await Fetcher.fetchPairData(token0, token1, provider)
+        appLogger.debug('pair address is', pairAddress)
+        appLogger.debug('factory address is', FACTORY_ADDRESS)
+        const pairData = await Fetcher.fetchPairData(token1, token0, provider)
+        appLogger.debug('pair data is', pairData)
 
         const maxAmountSold = BigNumber.from(pairData.reserve0.numerator.toString())
         const maxAmountPurchased = BigNumber.from(pairData.reserve1.numerator.toString())

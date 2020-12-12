@@ -9,12 +9,22 @@ import { calculateFreeCollateral, FreeCollateralFactors } from 'core/lib/FreeCol
 import { BigNumber } from 'ethers'
 import { convertToETH } from 'core/lib/ExchangeRate'
 import ETHNodeClient from 'core/services/ETHNodeClient'
-import { RECONCILIATION_RATE_LIMIT } from 'config/config'
+import { METRICS, RECONCILIATION_RATE_LIMIT } from 'config/config'
+import NotionalMetrics from 'agents/metrics/NotionalMetrics'
 import {
-  Liquidatable, LiquidatePair, Settleable, SettlePair,
+  Liquidatable,
+  LiquidatePair,
+  Settleable,
+  SettlePair,
 } from './Schema'
 import {
-  adjustNetAvailable, calculateCollateralPurchase, effectiveExchangeRate, totalCashClaim, totalHaircutCashClaim,
+  adjustNetAvailable,
+  calculateCollateralPurchase,
+  effectiveExchangeRate,
+  getfCashPair,
+  isfCashEligible,
+  totalCashClaim,
+  totalHaircutCashClaim,
 } from './lib/Generic'
 import { getLiquidatePair } from './lib/Liquidation'
 
@@ -163,6 +173,7 @@ class LiquidationController {
     aggregateFC: BigNumber,
   ) {
     const settlePairs: SettlePair[] = []
+    const { settlementDiscount } = GraphClient.getClient().getSystemConfiguration()
 
     negativeBalances.forEach((local) => {
       // NOTE: it's possible that local.symbol == collateral here, when an account has
@@ -172,7 +183,9 @@ class LiquidationController {
 
       const totalLocalCashClaim = totalCashClaim(local, account.portfolio)
       const netDebt = account.balances.get(local).cashBalance.add(totalLocalCashClaim)
+      const valueToSettle = account.balances.get(local).cashBalance.mul(-1)
 
+      // This is to account for potential liquidity tokens
       if (netDebt.lt(0) && aggregateFC.lt(0)) {
         const totalLocalHaircutCashClaim = totalHaircutCashClaim(local, account.portfolio)
         const localNetAvailable = factors.get(local)!.netAvailable
@@ -190,7 +203,7 @@ class LiquidationController {
         settlePairs.push(new SettlePair(
           localCurrency,
           undefined,
-          account.balances.get(local).cashBalance.mul(-1),
+          valueToSettle,
           BigNumber.from(0),
           BigNumber.from(0),
           BigNumber.from(0),
@@ -201,29 +214,52 @@ class LiquidationController {
 
       potentialCollateral.forEach((collateral) => {
         const collateralCurrency = GraphClient.getClient().getCurrencyBySymbol(collateral)
-        const { settlementDiscount } = GraphClient.getClient().getSystemConfiguration()
 
-        const {
-          localPurchased,
-          collateralPurchased,
-        } = calculateCollateralPurchase(
-          localCurrency,
-          collateralCurrency,
-          factors.get(collateralCurrency.symbol)!,
-          account,
-          netDebt.mul(-1),
-          settlementDiscount,
-        )
+        if (isfCashEligible(account, factors, collateralCurrency)) {
+          // This would short circuit the rest of the local currency stuff
+          const { localPurchased, fCashPurchased } = getfCashPair(
+            account,
+            valueToSettle,
+            localCurrency,
+            collateralCurrency,
+            factors,
+            settlementDiscount,
+          )
+          const fCashValue = fCashPurchased.reduce((b, a) => b.add(a.discountValue), BigNumber.from(0))
 
-        if (localPurchased.gt(0) && collateralPurchased.gt(0)) {
           settlePairs.push(new SettlePair(
             localCurrency,
             collateralCurrency,
-            account.balances.get(local).cashBalance.mul(-1),
+            valueToSettle,
+            localPurchased,
+            BigNumber.from(0),
+            effectiveExchangeRate(localPurchased, fCashValue, collateralCurrency),
+            fCashPurchased,
+          ))
+        } else {
+          // This function will adjust for fCash balances
+          const {
             localPurchased,
             collateralPurchased,
-            effectiveExchangeRate(localPurchased, collateralPurchased, collateralCurrency),
-          ))
+          } = calculateCollateralPurchase(
+            localCurrency,
+            collateralCurrency,
+            factors.get(collateralCurrency.symbol)!,
+            account,
+            netDebt.mul(-1),
+            settlementDiscount,
+          )
+
+          if (localPurchased.gt(0) && collateralPurchased.gt(0)) {
+            settlePairs.push(new SettlePair(
+              localCurrency,
+              collateralCurrency,
+              valueToSettle,
+              localPurchased,
+              collateralPurchased,
+              effectiveExchangeRate(localPurchased, collateralPurchased, collateralCurrency),
+            ))
+          }
         }
       })
     })
@@ -257,7 +293,7 @@ class LiquidationController {
           }
         }
 
-        // Adjusted positive collateral can be settled against
+        // Adjusted positive collateral can be settled against (this excludes fCash balances)
         // eslint-disable-next-line no-restricted-syntax
         for (const key of factors.keys()) {
           const adjustedNetAvailable = adjustNetAvailable(key, factors.get(key)!, account)
@@ -290,7 +326,6 @@ class LiquidationController {
           aggregateFC,
         ),
       ))
-
     return LiquidationController.filterAccountsByPair(localCurrency, collateralCurrency, settleable) as Settleable[]
   }
 
@@ -323,7 +358,12 @@ class LiquidationController {
 
     // Wait for reconciliation to finish
     while (accountsReconciled < allAccounts.length) {
+      // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => setTimeout(r, 3000))
+    }
+
+    if (METRICS.enabled) {
+      NotionalMetrics.ACCOUNTS.RECONCILIATION_ERRORS.set(reconErrors)
     }
 
     return reconErrors

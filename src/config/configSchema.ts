@@ -1,3 +1,14 @@
+export interface WalletSourceConfig {
+  address: string;
+}
+
+export interface UniswapSourceConfig {
+  factory: string;
+  pairs: string[];
+}
+
+type LiquiditySourceParams = WalletSourceConfig | UniswapSourceConfig
+
 export interface ConfigSchema {
   graphNode: {
     hostname: string,
@@ -18,7 +29,7 @@ export interface ConfigSchema {
   liquiditySources: {
     name: string,
     type: string,
-    params: any
+    params: LiquiditySourceParams
   }[],
   app: {
     port: number,

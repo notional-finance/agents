@@ -1,6 +1,7 @@
 import log4js from 'log4js'
 import { LIQUIDITY_SOURCES } from 'config/config'
 import { BigNumber } from 'ethers'
+import { UniswapSourceConfig, WalletSourceConfig } from 'config/configSchema'
 import { LiquidityPrice, LiquiditySource, LiquiditySourceType } from './Schema'
 import UniFlashSwap from './sources/UniFlashSwap'
 import WalletSource from './sources/WalletSource'
@@ -21,22 +22,32 @@ class LiquiditySourceController {
       LIQUIDITY_SOURCES
         .filter((s) => s.type === LiquiditySourceType.Wallet)
         .forEach((w) => {
-          if (!w.params.address.startsWith('0x')) {
+          const params = w.params as WalletSourceConfig
+          // Need to do this for helm chart issue :(
+          // https://github.com/helm/helm/issues/4262
+          const address = params.address.replace(/^"|"$/g, '')
+
+          if (!address.startsWith('0x')) {
             throw new Error('Address must begin with 0x, consider quoting in the config file')
           }
           appLogger.info(`initializing wallet liquidity source with params: ${w.params}`)
-          sources.push(new WalletSource(w.params.address as string))
+          sources.push(new WalletSource(address as string))
         })
 
       LIQUIDITY_SOURCES
         .filter((s) => s.type === LiquiditySourceType.UNI_FlashSwap)
         .forEach((w) => {
-          if (!w.params.factory.startsWith('0x')) {
+          const params = w.params as UniswapSourceConfig
+          // Need to do this for helm chart issue :(
+          // https://github.com/helm/helm/issues/4262
+          const factory = params.factory.replace(/^"|"$/g, '')
+
+          if (!factory.startsWith('0x')) {
             throw new Error('Address must begin with 0x, consider quoting in the config file')
           }
 
           appLogger.info(`initializing uniflashswap liquidity source with params: ${w.params}`)
-          sources.push(new UniFlashSwap(w.params.factory as string))
+          sources.push(new UniFlashSwap(factory, params.pairs))
         })
 
       LiquiditySourceController.controller = new LiquiditySourceController(sources)

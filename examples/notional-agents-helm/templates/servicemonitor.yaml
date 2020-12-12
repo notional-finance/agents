@@ -1,0 +1,20 @@
+{{- if .Values.agent.app.metrics.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "notional-agent-helm.fullname" . }}
+  labels:
+    {{- include "notional-agent-helm.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: notional-agent
+      network: {{ .Values.agent.network }}
+  endpoints:
+  - port: http
+    path: /metrics
+    # interval: {{ .Values.probes.metrics.periodSeconds | quote }}
+  - port: http
+    path: /notional/metrics
+    interval: {{ .Values.probes.notionalMetrics.periodSeconds | quote }}
+{{- end }}

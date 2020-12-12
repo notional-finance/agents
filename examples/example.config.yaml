@@ -27,7 +27,12 @@ liquiditySources:
   - name: uniswapFlashLoan
     type: UNI_FlashSwap
     params:
+      # This is the default factory address, do not change!
       factory: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
+      pairs:
+        - DAI-WETH
+        - USDC-WETH
+        - WBTC-WETH
 
 app:
   # Port to run the node express app on

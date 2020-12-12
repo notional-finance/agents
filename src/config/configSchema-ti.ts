@@ -4,6 +4,17 @@
 import * as t from "ts-interface-checker";
 // tslint:disable:object-literal-key-quotes
 
+export const WalletSourceConfig = t.iface([], {
+  "address": "string",
+});
+
+export const UniswapSourceConfig = t.iface([], {
+  "factory": "string",
+  "pairs": t.array("string"),
+});
+
+export const LiquiditySourceParams = t.union("WalletSourceConfig", "UniswapSourceConfig");
+
 export const ConfigSchema = t.iface([], {
   "graphNode": t.iface([], {
     "hostname": "string",
@@ -24,7 +35,7 @@ export const ConfigSchema = t.iface([], {
   "liquiditySources": t.array(t.iface([], {
     "name": "string",
     "type": "string",
-    "params": "any",
+    "params": "LiquiditySourceParams",
   })),
   "app": t.iface([], {
     "port": "number",
@@ -41,6 +52,9 @@ export const ConfigSchema = t.iface([], {
 });
 
 const exportedTypeSuite: t.ITypeSuite = {
+  WalletSourceConfig,
+  UniswapSourceConfig,
+  LiquiditySourceParams,
   ConfigSchema,
 };
 export default exportedTypeSuite;
