@@ -4,9 +4,9 @@ A stateless agent that can be deployed into a cloud environment to monitor [Noti
 
 ## Configuration and Deployment
 
-An example configuration file and docker-compose.yml can be found in the example folder. A simple flash swap liquidator is included in `contracts/UniFlashSwap.sol` and can be deployed by running the `contracts/deploy.ts` script in the same folder. An example liquidator script using [OpenZeppelin Defender](https://openzeppelin.com/defender/) is included in `examples/defender.js`.
+An example configuration file and `docker-compose.yml` can be found in the `examples` folder. A simple flash swap liquidator is included in `contracts/UniFlashSwap.sol` and can be deployed by running the `contracts/deploy.ts` script in the same folder. An example liquidator script using [OpenZeppelin Defender](https://openzeppelin.com/defender/) is included in `examples/defender.js`.
 
-If deploying in Kubernetes, a sample helm chart is included in `example/notional-agent-helm`.
+If deploying in Kubernetes, a sample helm chart is included in `examples/notional-agent-helm`.
 
 The Docker image is published at `https://hub.docker.com/repository/docker/notional/agents`
 

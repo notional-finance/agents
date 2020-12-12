@@ -17,6 +17,9 @@ spec:
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
+        # Automatically roll deployments:
+        # https://helm.sh/docs/howto/charts_tips_and_tricks/
+        rollme: {{ randAlphaNum 5 | quote }}
       {{- end }}
       labels:
         {{- include "notional-agent-helm.selectorLabels" . | nindent 8 }}

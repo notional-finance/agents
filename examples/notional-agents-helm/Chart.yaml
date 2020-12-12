@@ -1,8 +1,8 @@
 apiVersion: v2
-name: notional-agent
+name: notional-agents
 description: A Helm chart for Kubernetes
 
-image: notional/agent
+image: notional/agents
 
 # A chart can be either an 'application' or a 'library' chart.
 #
