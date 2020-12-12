@@ -101,14 +101,14 @@ function initApolloClient(uri: string, subgraph: string, cacheConfig?: InMemoryC
   })
   const httpLink = new HttpLink({ uri, fetch })
   const loggingLink = new ApolloLink((operation, forward) => {
-    logger.debug(`[GraphQL]: starting request for ${operation.operationName} to ${uri}`)
+    logger.trace(`[GraphQL]: starting request for ${operation.operationName} to ${uri}`)
     logger.trace(`[GraphQL]: ${operation.query}`)
     const duration = AppMetrics.GRAPH_NODE.REQUEST_DURATION.startTimer({ subgraph })
     const summary = AppMetrics.GRAPH_NODE.REQUEST_SUMMARY.startTimer({ subgraph })
     AppMetrics.GRAPH_NODE.REQUEST_COUNT.inc({ subgraph })
 
     return forward(operation).map((data) => {
-      logger.debug(`[GraphQL]: completed request for ${operation.operationName} to ${uri}`)
+      logger.trace(`[GraphQL]: completed request for ${operation.operationName} to ${uri}`)
       logger.trace(`[GraphQL]: ${data}`)
       duration()
       summary()
