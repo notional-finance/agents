@@ -28,7 +28,9 @@ agent:
     - name: uniswapFlashLoan
       type: UNI_FlashSwap
       params:
-        factory: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
+        # This must have two sets of quotes to preserve the string
+        # https://github.com/helm/helm/issues/4262
+        factory: '"0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"'
         pairs:
           - DAI-WETH
           - USDC-WETH

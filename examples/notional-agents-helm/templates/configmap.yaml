@@ -29,9 +29,7 @@ data:
       - name: {{ .name }}
         type: {{ .type  }}
         params:
-          {{- range $key, $value := .params }}
-          {{ $key }}: {{ $value | quote }}
-          {{- end }}
+          {{- toYaml .params | nindent 12 }}
       {{- end }}
 
     app:
