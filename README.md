@@ -4,7 +4,9 @@ A stateless agent that can be deployed into a cloud environment to monitor [Noti
 
 ## Configuration and Deployment
 
-An example configuration file and docker-compose.yml can be found in the example folder.
+An example configuration file and docker-compose.yml can be found in the example folder. A simple flash swap liquidator is included in `contracts/UniFlashSwap.sol` and can be deployed by running the `contracts/deploy.ts` script in the same folder. An example liquidator script using [OpenZeppelin Defender](https://openzeppelin.com/defender/) is included in `examples/defender.js`.
+
+If deploying in Kubernetes, a sample helm chart is included in `example/helm`.
 
 ## API Docs
 
@@ -16,6 +18,25 @@ After startup, the docs for the API can be found at http://<hostname>/api-docs. 
 - Usage of [The Graph](http://thegraph.com) to reduce the number of `eth_call` requests to a blockchain node. The Graph has had issues with downtime in the past so this is a risk for a service that intends to be high availablility like this one. Potential mitigation would be to run a self hosted graph node. Our subgraph is open sourced at https://github.com/notional-finance/subgraph.
 - Transaction signing is not included in the agent, the intention is for another process (potentially a cron job) to make REST request to the various endpoints and then handle transaction signing and submission.
 
+# Local Development
+
+Setting up the local dev environment is a work in progress.
+
+## Starting the Environment
+
+`./start.sh` in the root folder will start a local test environment with a Ganache sandbox, the graph node, and the Notional Agent docker image.
+
+## Unit Tests
+
+Unit tests can be found in `src/**/*.spec.ts` and run with `yarn run test`. Note that running unit tests requires the local test environment to be running (it queries configuration from the graph).
+
+## Integration Tests
+
+Integration tests can be run with `yarn run test:integration`.
+
 # Contributing
 
-Contributions are welcome! You can find me on [Discord](https://discord.gg/62eX3K7) or email: jeff at notional finance.
+Contributions are welcome! You can find me on [Discord](https://discord.gg/62eX3K7) or email: jeff at notional finance. Areas where this project can be improved:
+
+- Adding additional liquidity sources
+- Improving ApolloClient integration to support multiple subgraphs
