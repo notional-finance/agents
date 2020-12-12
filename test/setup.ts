@@ -39,7 +39,6 @@ async function deployContract(owner: Wallet, artifact: any, args: any[]) {
   const factory = new ContractFactory(artifact.abi, artifact.bytecode, owner)
   const txn = factory.getDeployTransaction(...args)
   logger.info(`Deploying ${artifact.contractName}...`)
-  logger.info(owner)
   const receipt = await (await owner.sendTransaction(txn)).wait()
   const contract = new Contract(receipt.contractAddress as string, artifact.abi, owner)
   logger.info(`Successfully deployed ${artifact.contractName} at ${contract.address}...`)
