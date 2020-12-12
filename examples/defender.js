@@ -12,7 +12,7 @@ async function attemptLiquidate(account, signer) {
   const pair = account.pairs[0]
   const localRequired = ethers.BigNumber.from(pair.localRequired)
 
-  if (pair.fCashPurchased || pair.fCashPurchased.length > 0) {
+  if (pair.fCashPurchased && pair.fCashPurchased.length > 0) {
     // We cannot liquidate fCash using flash swaps
     return
   }
