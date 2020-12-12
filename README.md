@@ -6,7 +6,7 @@ A stateless agent that can be deployed into a cloud environment to monitor [Noti
 
 An example configuration file and docker-compose.yml can be found in the example folder. A simple flash swap liquidator is included in `contracts/UniFlashSwap.sol` and can be deployed by running the `contracts/deploy.ts` script in the same folder. An example liquidator script using [OpenZeppelin Defender](https://openzeppelin.com/defender/) is included in `examples/defender.js`.
 
-If deploying in Kubernetes, a sample helm chart is included in `example/helm`.
+If deploying in Kubernetes, a sample helm chart is included in `example/notional-agent-helm`.
 
 ## API Docs
 
@@ -20,7 +20,7 @@ After startup, the docs for the API can be found at http://<hostname>/api-docs. 
 
 # Local Development
 
-Setting up the local dev environment is a work in progress.
+Setting up the local dev environment is a work in progress. This repo uses a forked version of the `@uniswap/sdk` package to support local testing. I'm investigating a way to remove this dependency.
 
 ## Starting the Environment
 

@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.agent.configMapName }}-{{ .Values.agent.network }}
+  labels:
+    {{- include "notional-agent-helm.labels" . | nindent 4 }}
+    network: {{ .Values.agent.network }}
+data:
+  config.yaml: |
+    graphNode:
+      hostname: {{ .Values.agent.graphNode.hostname }}
+      indexer: {{ .Values.agent.graphNode.indexer }}
+      subgraphs:
+        {{- range .Values.agent.graphNode.subgraphs }}
+        - name: {{ .name }}
+          pollingInterval: {{ .pollingInterval  }}
+          longPollingInterval: {{ .longPollingInterval }}
+          maxBlockLag: {{ .maxBlockLag }}
+        {{- end }}
+
+    ethNode:
+      hostname: {{ .Values.agent.ethNode.hostname }}
+      network: {{ .Values.agent.network }}
+      retries: {{ .Values.agent.ethNode.retries }}
+      pollingIntervalMs: {{ .Values.agent.ethNode.pollingIntervalMs }}
+
+    liquiditySources:
+      {{- range .Values.agent.liquiditySources }}
+      - name: {{ .name }}
+        type: {{ .type  }}
+        params:
+          {{- range $key, $value := .params }}
+          {{ $key }}: {{ $value | quote }}
+          {{- end }}
+      {{- end }}
+
+    app:
+      port: {{ .Values.agent.app.port }}
+      apiVersion: {{ .Values.agent.app.apiVersion | quote }}
+      enableRoutes:
+        {{- range $route := .Values.agent.app.enableRoutes }}
+        - {{ $route }}
+        {{- end }}
+      {{ with .Values.agent.app.metrics }}
+      metrics:
+        enabled: {{ .enabled }}
+        prefix: {{ .prefix | quote }}
+        defaultMetricsInterval: {{ .defaultMetricsInterval }}
+        includeQueryParams: {{ .includeQueryParams }}
+        maxBlockLag: {{ .maxBlockLag }}
+      {{- end }}

@@ -5,7 +5,7 @@
   "main": "index.ts",
   "repository": "git@github.com:notional-finance/agents.git",
   "author": "Jeff Wu <jeff@notional.finance>",
-  "license": "GPL-3.0-only",
+  "license": "MIT",
   "private": false,
   "scripts": {
     "start": "ts-node -r tsconfig-paths/register ./src/app.ts",
