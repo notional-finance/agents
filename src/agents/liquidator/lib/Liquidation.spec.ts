@@ -453,7 +453,7 @@ describe('Liquidation', () => {
     })
   })
 
-  describe.only('settlement pairs', () => {
+  describe('settlement pairs', () => {
     it('calculates settle currency', () => {
 
     })
