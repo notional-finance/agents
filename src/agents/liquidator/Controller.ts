@@ -154,15 +154,29 @@ class LiquidationController {
       }) => {
         const ethDenominatedShortfall = netETHDebtWithBuffer.sub(netETHCollateral)
         const pairs = LiquidationController.getLiquidatePairs(account, factors, ethDenominatedShortfall)
+        // Sort by the most effective pair first
+        const sortedPairs = pairs.sort((a, b) => {
+          if (a.ethShortfallRecovered.lt(b.ethShortfallRecovered)) return 1
+          if (a.ethShortfallRecovered.eq(b.ethShortfallRecovered)) return 0
+          return -1
+        })
 
         return new Liquidatable(
           account.address,
           ethDenominatedShortfall,
-          pairs,
+          sortedPairs,
         )
       })
 
-    return LiquidationController.filterAccountsByPair(localCurrency, collateralCurrency, liquidatable) as Liquidatable[]
+    const filtered = LiquidationController.filterAccountsByPair(
+      localCurrency, collateralCurrency, liquidatable,
+    ) as Liquidatable[]
+
+    return filtered.sort((a, b) => {
+      if (a.ethDenominatedShortfall.lt(b.ethDenominatedShortfall)) return 1
+      if (a.ethDenominatedShortfall.eq(b.ethDenominatedShortfall)) return 0
+      return -1
+    })
   }
 
   public static getSettlePairs(
@@ -340,12 +354,16 @@ class LiquidationController {
     const { portfolios } = ETHNodeClient.getClient().contracts
     const liquidatable = await LiquidationController.getLiquidatable()
     const limiter = new RateLimiter(RECONCILIATION_RATE_LIMIT, 'second')
+    const blockNumber = await ETHNodeClient.getClient().provider.getBlockNumber()
     let reconErrors = 0
     let accountsReconciled = 0
+    appLogger.info(`Running reconciliation at block number ${blockNumber}`)
 
     allAccounts.forEach((a) => {
       limiter.removeTokens(1, () => {
-        portfolios.freeCollateralView(a.address)
+        // We make all the collateral calls at the same block number so that
+        // we don't get any false positives
+        portfolios.freeCollateralView(a.address, { blockTag: blockNumber })
           .then((fc) => {
             if (fc[0].isNegative()) {
               const found = liquidatable.find((l) => l.address === a.address)

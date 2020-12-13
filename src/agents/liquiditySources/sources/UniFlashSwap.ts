@@ -151,6 +151,11 @@ class UniFlashSwap extends LiquiditySource {
       return undefined
     }
 
+    const metadata = {
+      token0: pairData.token0.address,
+      token1: pairData.token1.address,
+    }
+
     if (amountSold) {
       const trade = new Trade(
         uniRoute,
@@ -167,6 +172,7 @@ class UniFlashSwap extends LiquiditySource {
         amountSold,
         BigNumber.from(trade.outputAmount.numerator.toString()),
         parseUnits(trade.executionPrice.toFixed(6), 6),
+        metadata,
       )
     }
     return new LiquidityPrice(
@@ -178,6 +184,7 @@ class UniFlashSwap extends LiquiditySource {
       undefined,
       undefined,
       parseUnits(uniRoute.midPrice.toFixed(6), 6),
+      metadata,
     )
   }
 
@@ -201,6 +208,11 @@ class UniFlashSwap extends LiquiditySource {
       return undefined
     }
 
+    const metadata = {
+      token0: pairData.token0.address,
+      token1: pairData.token1.address,
+    }
+
     if (amountPurchased) {
       const trade = new Trade(
         uniRoute,
@@ -217,6 +229,7 @@ class UniFlashSwap extends LiquiditySource {
         BigNumber.from(trade.inputAmount.numerator.toString()),
         amountPurchased,
         BigNumber.from(trade.executionPrice.numerator.toString()),
+        metadata,
       )
     }
     return new LiquidityPrice(
@@ -228,6 +241,7 @@ class UniFlashSwap extends LiquiditySource {
       undefined,
       undefined,
       BigNumber.from(uniRoute.midPrice.numerator.toString()),
+      metadata,
     )
   }
 }

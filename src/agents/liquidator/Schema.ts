@@ -69,7 +69,8 @@ export class LiquidatePair extends JsonSerializeable {
  * @typedef {object} Liquidatable
  * @property {string} address.required - Account address
  * @property {string} ethDenominatedShortfall.required - Free collateral shortfall in ETH denominated terms
- * @property {array<LiquidatePair>} pairs.required - Potential currency pairs for liquidating the account
+ * @property {array<LiquidatePair>} pairs.required - Potential currency pairs for liquidating the account, the
+ * pairs will be sorted descending by ethShortfallRecovered, meaning the most effective pair will be first.
  */
 export class Liquidatable extends JsonSerializeable {
   constructor(

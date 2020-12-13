@@ -46,6 +46,7 @@ export class SupportedPair extends JsonSerializeable {
  * @property {string} amountSold - the amount of currency sold on this pair
  * @property {string} amountPurchased - the amount of currency purchased on this pair
  * @property {string} effectiveExchangeRate - the effective exchange rate between sold and purchased
+ * @property {object} metadata - arbitrary metadata for the price
  */
 export class LiquidityPrice extends JsonSerializeable {
   constructor(
@@ -57,6 +58,7 @@ export class LiquidityPrice extends JsonSerializeable {
     public amountSold: BigNumber | undefined,
     public amountPurchased: BigNumber | undefined,
     public effectiveExchangeRate: BigNumber,
+    public metadata?: {[key: string]: string},
   ) {
     super()
   }
