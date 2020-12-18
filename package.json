@@ -1,6 +1,6 @@
 {
   "name": "@notional-finance/agent",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Agents for Notional Finance",
   "main": "index.ts",
   "repository": "git@github.com:notional-finance/agents.git",
