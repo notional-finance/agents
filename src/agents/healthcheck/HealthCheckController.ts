@@ -21,16 +21,12 @@ class HealthCheckController {
     }
   }
 
-  private static async getGraphStatus() {
-    return {
-      graphStatus: await GraphClient.indexer.getSubgraphStatus(DEFAULT_SUBGRAPH.name),
-      blockLag: await GraphClient.indexer.getSubgraphBlockLag(DEFAULT_SUBGRAPH.name),
-    }
-  }
-
   public static async healthcheck() {
-    const { graphStatus, blockLag } = await HealthCheckController.getGraphStatus()
-    const ethNode = await HealthCheckController.getEthNodeStatus()
+    const [graphStatus, blockLag, ethNode] = await Promise.all([
+      GraphClient.indexer.getSubgraphStatus(DEFAULT_SUBGRAPH.name),
+      GraphClient.indexer.getSubgraphBlockLag(DEFAULT_SUBGRAPH.name),
+      HealthCheckController.getEthNodeStatus(),
+    ])
 
     return {
       ethNode,
