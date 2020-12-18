@@ -57,9 +57,9 @@ spec:
             httpGet:
               path: /healthcheck
               port: http
-            initialDelaySeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 5
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
           volumeMounts:
             - name: config-volume
               mountPath: /home/node/config

@@ -53,6 +53,10 @@ probes:
     timeoutSeconds: 3
     failureThreshold: 5
     periodSeconds: 30
+  readiness:
+    timeoutSeconds: 3
+    failureThreshold: 5
+    periodSeconds: 30
   metrics:
     periodSeconds: 10s
   notionalMetrics:
