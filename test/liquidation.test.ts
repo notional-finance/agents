@@ -183,7 +183,7 @@ describe('Liquidation', () => {
     })
   })
 
-  describe('settles accounts at maturity', async () => {
+  describe('settles accounts at maturity', () => {
     let allDataSettle
     let daiOnlySettle
     let daiWethSettle

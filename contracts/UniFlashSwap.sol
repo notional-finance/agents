@@ -27,24 +27,43 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
         IERC20(token).transfer(owner(), balance);
     }
 
+    function getRepayAmounts(uint amount0, uint amount1, address tokenOut, uint initialTokenOutBalance) internal view returns (uint, uint) {
+        (uint reserve0, uint reserve1, /* uint32 blockTime */) = IUniswapV2Pair(msg.sender).getReserves();
+        uint currentTokenBalance = IERC20(tokenOut).balanceOf(address(this));
+        uint residualOut = currentTokenBalance > initialTokenOutBalance ? currentTokenBalance - initialTokenOutBalance : 0;
+
+        if (amount0 > 0) {
+            uint newReserve = reserve0 + residualOut;
+            uint repayAmount = UniswapV2Library.getAmountIn(amount0, reserve1, newReserve);
+
+            return (residualOut, repayAmount);
+        } else {
+            uint newReserve = reserve1 + residualOut;
+            uint repayAmount = UniswapV2Library.getAmountIn(amount1, reserve0, newReserve);
+
+            return (residualOut, repayAmount);
+        }
+    }
+
     function uniswapV2Call(address /* sender */, uint amount0, uint amount1, bytes calldata data) external override {
 
         address tokenIn;
-        uint repayAmount;
+        address tokenOut;
+        uint initialTokenOutBalance;
         {
             address token0 = IUniswapV2Pair(msg.sender).token0();
             address token1 = IUniswapV2Pair(msg.sender).token1();
             // Ensure that the caller is actually the uniswap pair
             assert(msg.sender == factoryV2.getPair(token0, token1));
 
-            (uint reserve0, uint reserve1, /* uint32 blockTime */) = IUniswapV2Pair(msg.sender).getReserves();
-
             if (amount0 > 0) {
                 tokenIn = token1;
-                repayAmount = UniswapV2Library.getAmountIn(amount0, reserve1, reserve0);
+                tokenOut = token0;
+                initialTokenOutBalance = IERC20(token0).balanceOf(address(this));
             } else {
                 tokenIn = token0;
-                repayAmount = UniswapV2Library.getAmountIn(amount1, reserve0, reserve1);
+                tokenOut = token1;
+                initialTokenOutBalance = IERC20(token1).balanceOf(address(this));
             }
         }
 
@@ -84,6 +103,12 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
                 uint16 collateralCurrency
             ) = abi.decode(data, (bytes1, address[], uint16, uint16));
             escrow.liquidateBatch(accounts, localCurrency, collateralCurrency);
+        }
+
+        (uint residualOut, uint repayAmount) = getRepayAmounts(amount0, amount1, tokenOut, initialTokenOutBalance);
+
+        if (residualOut > 0) {
+            IERC20(tokenOut).transfer(msg.sender, residualOut);
         }
 
         IERC20(tokenIn).transfer(msg.sender, repayAmount);
