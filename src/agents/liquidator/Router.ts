@@ -22,7 +22,8 @@ LiquidatorRouter.getAsync('/accounts',
 /**
  * GET /v1/liquidator/reconcile
  * @summary Reconciles calculated settlement and liquidation figures with on chain figures, this method
- * makes rate limited calls to the ETH node so set an appropriately long timeout when calling
+ * makes rate limited calls to the ETH node so set an appropriately long timeout when calling. Times out
+ * at 10 min.
  * @tags Liquidator
  * @return {array<Account>} 200 - success response - application/json
  * @return {Error} 500 - Bad request response - application/json
@@ -30,6 +31,11 @@ LiquidatorRouter.getAsync('/accounts',
 LiquidatorRouter.getAsync('/reconcile',
   async (_req: Request, res: Response) => {
     const reconErrors = await LiquidationController.reconcile()
+    res.setTimeout(600000, () => {
+      res.status(503)
+      res.send({ error: 'Recon Timeout' })
+    })
+
     res.send({ reconErrors })
   })
 
