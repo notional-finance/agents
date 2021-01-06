@@ -1,5 +1,6 @@
 import ETHNodeClient from 'core/services/ETHNodeClient'
 import axios from 'axios'
+import axiosRetry from 'axios-retry'
 import {
   BigNumber, Contract, ethers, Wallet,
 } from 'ethers'
@@ -17,6 +18,14 @@ import { IUniswapV2Pair } from './mocks/IUniswapV2Pair'
 
 // import { MockAggregator } from './mocks/MockAggregator'
 // const MockAggregatorArtifact = require('./mocks/MockAggregator.json')
+axiosRetry(axios, {
+  retries: 5, // number of retries
+  retryDelay: (retryCount) => {
+    console.log(`retry attempt: ${retryCount}`)
+    return retryCount * 2000 // time interval between retries
+  },
+  retryCondition: (error) => error?.response?.status === 500,
+})
 
 const API_VERSION = 'v1'
 const LIQUIDATION_ROOT = 'liquidator'
@@ -52,7 +61,7 @@ describe('Liquidation', () => {
   beforeAll(async () => {
     await new Promise((resolve) => {
       GraphClient.getClient(DEFAULT_SUBGRAPH.name, () => {
-        resolve()
+        resolve(null)
       })
     })
 
@@ -164,7 +173,8 @@ describe('Liquidation', () => {
         ['bytes1', 'address', 'uint128', 'uint16', 'uint16'],
         ['0x03', account.address, 0, dai.id, weth.id],
       )
-      await uniswapPair.swap(localRequired, 0, flashContract.address, encodedData)
+      const localRequiredBuffer = localRequired.add(localRequired.mul(1).div(100))
+      await uniswapPair.swap(localRequiredBuffer, 0, flashContract.address, encodedData)
 
       const wethBalanceAfter = await wethContract.balanceOf(flashContract.address)
       const fcAfter = await portfolios.freeCollateralView(account.address)
@@ -183,7 +193,7 @@ describe('Liquidation', () => {
     })
   })
 
-  describe('settles accounts at maturity', async () => {
+  describe('settles accounts at maturity', () => {
     let allDataSettle
     let daiOnlySettle
     let daiWethSettle

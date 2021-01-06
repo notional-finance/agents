@@ -1,6 +1,6 @@
 {
   "name": "@notional-finance/agent",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Agents for Notional Finance",
   "main": "index.ts",
   "repository": "git@github.com:notional-finance/agents.git",
@@ -62,6 +62,7 @@
     "@awaitjs/express": "^0.6.3",
     "@uniswap/sdk": "jeffywu/uniswap-sdk#e51b6b8",
     "axios": "^0.21.0",
+    "axios-retry": "^3.1.9",
     "body-parser": "^1.19.0",
     "compression": "^1.7.4",
     "cross-fetch": "^3.0.6",

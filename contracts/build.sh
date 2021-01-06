@@ -8,3 +8,4 @@ solc @uniswap/=$(pwd)/node_modules/@uniswap/ \
 
 jq '.contracts."contracts/UniFlashSwap.sol:UniFlashSwap" | .["abi"] = (.abi | fromjson) |.["bytecode"] = .bin | del(.["bin"]) ' contracts/combined.json > contracts/UniFlashSwap.json
 rm contracts/combined.json
+cp contracts/UniFlashSwap.json test/mocks/UniFlashSwap.json
