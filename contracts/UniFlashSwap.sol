@@ -12,6 +12,7 @@ import './Ownable.sol';
 contract UniFlashSwap is IUniswapV2Callee, Ownable {
     IUniswapV2Factory public factoryV2;
     IEscrowLiquidator public escrow;
+    using SafeMath for uint256;
 
     constructor(address _factoryV2, address _escrow) public {
         factoryV2 = IUniswapV2Factory(_factoryV2);
@@ -27,20 +28,43 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
         IERC20(token).transfer(owner(), balance);
     }
 
-    function getRepayAmounts(uint amount0, uint amount1, address tokenOut, uint initialTokenOutBalance) internal view returns (uint, uint) {
-        (uint reserve0, uint reserve1, /* uint32 blockTime */) = IUniswapV2Pair(msg.sender).getReserves();
-        uint currentTokenBalance = IERC20(tokenOut).balanceOf(address(this));
-        uint residualOut = currentTokenBalance > initialTokenOutBalance ? currentTokenBalance - initialTokenOutBalance : 0;
+    function getAdjustedBalance(uint reserve, uint amount, uint residualOut) internal pure returns (uint) {
+        return (reserve.sub(amount).add(residualOut)).mul(1000).sub(residualOut.mul(3));
+    }
 
-        if (amount0 > 0) {
-            uint newReserve = reserve0 + residualOut;
-            uint repayAmount = UniswapV2Library.getAmountIn(amount0, reserve1, newReserve);
+    function getRepayAmounts(
+        uint amount0,
+        uint amount1,
+        address tokenOut,
+        uint initialTokenOutBalance,
+        address pairAddress
+    ) internal view returns (uint, uint) {
+        (uint reserve0, uint reserve1, /* uint32 blockTime */) = IUniswapV2Pair(pairAddress).getReserves();
+        uint currentTokenBalance = IERC20(tokenOut).balanceOf(address(this));
+        uint residualOut = currentTokenBalance > initialTokenOutBalance ? currentTokenBalance.sub(initialTokenOutBalance) : 0;
+
+        if (residualOut > 0 && amount0 > 0) {
+            // repayAmount >= (r1r0*1000^2 - r1*b0Adj*1000) / (997*b0Adj)
+            // b0Adj = (reserve0 - amount0 + residualOut) * 1000 - (residualOut) * 3
+
+            uint balAdj = getAdjustedBalance(reserve0, amount0, residualOut);
+            uint numerator = (reserve0.mul(reserve1).mul(1000**2)).sub(balAdj.mul(reserve1).mul(1000));
+            uint denominator = balAdj.mul(997);
+            uint repayAmount = numerator / denominator + 1;
 
             return (residualOut, repayAmount);
-        } else {
-            uint newReserve = reserve1 + residualOut;
-            uint repayAmount = UniswapV2Library.getAmountIn(amount1, reserve0, newReserve);
+        } else if (residualOut > 0 && amount1 > 0) {
+            uint balAdj = getAdjustedBalance(reserve1, amount1, residualOut);
+            uint numerator = (reserve0.mul(reserve1).mul(1000**2)).sub(balAdj.mul(reserve0).mul(1000));
+            uint denominator = balAdj.mul(997);
+            uint repayAmount = numerator / denominator + 1;
 
+            return (residualOut, repayAmount);
+        } else if (amount0 > 0) {
+            uint repayAmount = UniswapV2Library.getAmountIn(amount0, reserve1, reserve0);
+            return (residualOut, repayAmount);
+        } else {
+            uint repayAmount = UniswapV2Library.getAmountIn(amount1, reserve0, reserve1);
             return (residualOut, repayAmount);
         }
     }
@@ -59,11 +83,11 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
             if (amount0 > 0) {
                 tokenIn = token1;
                 tokenOut = token0;
-                initialTokenOutBalance = IERC20(token0).balanceOf(address(this));
+                initialTokenOutBalance = IERC20(tokenOut).balanceOf(address(this)) - amount0;
             } else {
                 tokenIn = token0;
                 tokenOut = token1;
-                initialTokenOutBalance = IERC20(token1).balanceOf(address(this));
+                initialTokenOutBalance = IERC20(tokenOut).balanceOf(address(this)) - amount1;
             }
         }
 
@@ -105,7 +129,7 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
             escrow.liquidateBatch(accounts, localCurrency, collateralCurrency);
         }
 
-        (uint residualOut, uint repayAmount) = getRepayAmounts(amount0, amount1, tokenOut, initialTokenOutBalance);
+        (uint residualOut, uint repayAmount) = getRepayAmounts(amount0, amount1, tokenOut, initialTokenOutBalance, msg.sender);
 
         if (residualOut > 0) {
             IERC20(tokenOut).transfer(msg.sender, residualOut);
@@ -113,5 +137,4 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
 
         IERC20(tokenIn).transfer(msg.sender, repayAmount);
     }
-
 }
