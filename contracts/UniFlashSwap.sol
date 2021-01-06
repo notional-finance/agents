@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: MIT
 pragma solidity =0.6.6;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Callee.sol';
@@ -9,6 +9,10 @@ import '@uniswap/v2-periphery/contracts/libraries/UniswapV2Library.sol';
 import './IEscrowLiquidator.sol';
 import './Ownable.sol';
 
+/**
+ * @notice Contract is unaudited and provided as an example only! Please use at your
+ * discretion and with care.
+ */
 contract UniFlashSwap is IUniswapV2Callee, Ownable {
     IUniswapV2Factory public factoryV2;
     IEscrowLiquidator public escrow;
@@ -19,6 +23,7 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
         escrow = IEscrowLiquidator(_escrow);
     }
 
+    // Must enable allowance on Escrow in order to liquidate
     function enableToken(address token, uint256 allowance) external onlyOwner {
         IERC20(token).approve(address(escrow), allowance);
     }
@@ -32,6 +37,16 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
         return (reserve.sub(amount).add(residualOut)).mul(1000).sub(residualOut.mul(3));
     }
 
+    /**
+     * @notice Accounts for the case when there is some residual amount left in the token input and we want
+     * to transfer it back to Uniswap. For example, when flash swapping DAI-WETH for a liquidation we request
+     * 110% of the local DAI required figure as a safety buffer. We will then need to repay the additional 10%
+     * of DAI requested back to Uniswap in addition to the WETH required. However, since the fee is taken on both
+     * sides of the pool and we do not have excess DAI to repay the fee the math is a little trickier:
+     *
+     * bAdj = (reserve - amountIn + residualOut) * 1000 - residualOut * 3
+     * repayAmount = (r1*r0*1000^2 - r1*bAdj*1000) / (997 * bAdj)
+     */
     function getRepayAmounts(
         uint amount0,
         uint amount1,
@@ -44,9 +59,6 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
         uint residualOut = currentTokenBalance > initialTokenOutBalance ? currentTokenBalance.sub(initialTokenOutBalance) : 0;
 
         if (residualOut > 0 && amount0 > 0) {
-            // repayAmount >= (r1r0*1000^2 - r1*b0Adj*1000) / (997*b0Adj)
-            // b0Adj = (reserve0 - amount0 + residualOut) * 1000 - (residualOut) * 3
-
             uint balAdj = getAdjustedBalance(reserve0, amount0, residualOut);
             uint numerator = (reserve0.mul(reserve1).mul(1000**2)).sub(balAdj.mul(reserve1).mul(1000));
             uint denominator = balAdj.mul(997);
@@ -69,6 +81,10 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
         }
     }
 
+    /**
+     * @dev The sender here is irrelevant because the liquidation funds will stick with the contract and can only
+     * be swept out by the owner so liquidations can be executed by any caller.
+     */
     function uniswapV2Call(address /* sender */, uint amount0, uint amount1, bytes calldata data) external override {
 
         address tokenIn;
