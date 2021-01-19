@@ -35,10 +35,13 @@ async function attemptLiquidate(account, signer) {
   
   try {
     let tx
+    // Increase the local requred amount by some buffer just to ensure that we have sufficient amount to
+    // liquidate
+    const localRequiredBuffer = localRequired.add(localRequired.mul(10).div(100))
     if (uniFlashSwap.metadata.token0.toLowerCase() === pair.localCurrency.address.toLowerCase()) {
-      tx = await uniswapPair.swap(localRequired, 0, flashContractAddress, encodedData)
+      tx = await uniswapPair.swap(localRequiredBuffer, 0, flashContractAddress, encodedData)
     } else {
-      tx = await uniswapPair.swap(0, localRequired, flashContractAddress, encodedData)
+      tx = await uniswapPair.swap(0, localRequiredBuffer, flashContractAddress, encodedData)
     }
     console.log(`Called uniswap with txHash: ${tx.hash}`);
   } catch (error) {
