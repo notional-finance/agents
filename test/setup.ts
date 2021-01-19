@@ -68,18 +68,23 @@ async function deployUniswap(
   // This is set here if there is no uniswap exchange defined
   const wethAddress = GraphClient.getClient().getCurrencyBySymbol('WETH').address
   const dai = GraphClient.getClient().getCurrencyBySymbol('DAI')
+  const usdc = GraphClient.getClient().getCurrencyBySymbol('USDC')
   const daiContract = ETHNodeClient.getClient().getToken(dai.address)
+  const usdcContract = ETHNodeClient.getClient().getToken(usdc.address)
   const { uniswapFactory, uniswapRouter } = await deployPrerequisites(owner)
 
   logger.info('Deploying mock uniswap')
   await uniswapFactory.connect(owner).createPair(dai.address, wethAddress)
-  logger.info('Uniswap pair deployed to', await uniswapFactory.getPair(dai.address, wethAddress))
+  logger.info('Uniswap DAI/ETH pair deployed to', await uniswapFactory.getPair(dai.address, wethAddress))
+  await uniswapFactory.connect(owner).createPair(dai.address, usdc.address)
+  logger.info('Uniswap DAI/USDC pair deployed to', await uniswapFactory.getPair(dai.address, usdc.address))
 
   const tokenBalance = seedEthBalance
     .mul(ethers.constants.WeiPerEther)
     .div(initialExchangeRate)
 
   await daiContract.connect(owner).approve(uniswapRouter.address, parseEther('100000000'))
+  await usdcContract.connect(owner).approve(uniswapRouter.address, parseEther('100000000'))
 
   // This is required in ganache to get the block timestamp correct.
   logger.info('Resetting network timestamp')
@@ -88,7 +93,7 @@ async function deployUniswap(
   const currentBlock = await owner.provider.getBlock(await owner.provider.getBlockNumber())
 
   // Setup the liquidity pool
-  logger.info('Seeding mock uniswap pool')
+  logger.info('Seeding DAI/ETH mock uniswap pool')
   await uniswapRouter.connect(owner).addLiquidityETH(
     dai.address,
     tokenBalance,
@@ -99,13 +104,27 @@ async function deployUniswap(
     { value: seedEthBalance },
   )
 
+  logger.info('Seeding DAI/USDC mock uniswap pool')
+  await uniswapRouter.connect(owner).addLiquidity(
+    dai.address,
+    usdc.address,
+    parseEther('1000000'),
+    BigNumber.from(1000000e6),
+    parseEther('1000000'),
+    BigNumber.from(1000000e6),
+    await uniswapRouter.signer.getAddress(),
+    currentBlock.timestamp + 10000,
+  )
+
   logger.info(`Uniswap factory deployed to ${uniswapFactory.address}`)
 
   return { uniswapFactory, uniswapRouter }
 }
 
 async function deployFlashContract(owner: Wallet, uniswapFactory: UniswapV2Factory, escrow: Escrow) {
-  return await deployContract(owner, UniFlashSwapArtifact, [uniswapFactory.address, escrow.address]) as UniFlashSwap
+  const wethAddress = GraphClient.getClient().getCurrencyBySymbol('WETH').address
+  return await deployContract(owner, UniFlashSwapArtifact,
+    [uniswapFactory.address, escrow.address, wethAddress]) as UniFlashSwap
 }
 
 async function setup(

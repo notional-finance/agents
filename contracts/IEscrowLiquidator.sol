@@ -3,6 +3,8 @@ pragma solidity ^0.6.0;
 
 interface IEscrowLiquidator {
 
+    function currencyIdToAddress(uint16 id) external view returns (address);
+
     function liquidateBatch(
         address[] calldata accounts,
         uint16 localCurrency,

@@ -16,11 +16,13 @@ import './Ownable.sol';
 contract UniFlashSwap is IUniswapV2Callee, Ownable {
     IUniswapV2Factory public factoryV2;
     IEscrowLiquidator public escrow;
+    address public WETH;
     using SafeMath for uint256;
 
-    constructor(address _factoryV2, address _escrow) public {
+    constructor(address _factoryV2, address _escrow, address _weth) public {
         factoryV2 = IUniswapV2Factory(_factoryV2);
         escrow = IEscrowLiquidator(_escrow);
+        WETH = _weth;
     }
 
     // Must enable allowance on Escrow in order to liquidate
@@ -108,6 +110,7 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
         }
 
         (bytes1 action) = abi.decode(data, (bytes1));
+        uint16 collateralId;
         if (action == 0x01) {
             (
                 /* bytes1 action */,
@@ -117,6 +120,8 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
                 uint128 value
             ) = abi.decode(data, (bytes1, uint16, uint16, address, uint128));
             escrow.settleCashBalance(localCurrency, collateralCurrency, payer, value);
+
+            collateralCurrency = collateralId;
         } else if (action == 0x02) {
             (
                 /* bytes1 action */,
@@ -126,6 +131,8 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
                 uint128[] memory values
             ) = abi.decode(data, (bytes1, uint16, uint16, address[], uint128[]));
             escrow.settleCashBalanceBatch(localCurrency, collateralCurrency, payers, values);
+
+            collateralCurrency = collateralId;
         } else if (action == 0x03) {
             (
                 /* bytes1 action */,
@@ -135,6 +142,8 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
                 uint16 collateralCurrency
             ) = abi.decode(data, (bytes1, address, uint128, uint16, uint16));
             escrow.liquidate(account, maxLiquidateAmount, localCurrency, collateralCurrency);
+
+            collateralCurrency = collateralId;
         } else if (action == 0x04) {
             (
                 /* bytes1 action */,
@@ -143,9 +152,25 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
                 uint16 collateralCurrency
             ) = abi.decode(data, (bytes1, address[], uint16, uint16));
             escrow.liquidateBatch(accounts, localCurrency, collateralCurrency);
+
+            collateralCurrency = collateralId;
         }
 
         (uint residualOut, uint repayAmount) = getRepayAmounts(amount0, amount1, tokenOut, initialTokenOutBalance, msg.sender);
+
+        if (collateralId != 0) {
+            // If the collateral currency is not WETH then we need to swap the currency we traded
+            // (i.e. WBTC) back to WETH before we repay
+            address collateralToken = escrow.currencyIdToAddress(collateralId);
+            address collateralWethPair = factoryV2.getPair(collateralToken, WETH);
+            address token0 = IUniswapV2Pair(collateralWethPair).token0();
+
+            if (token0 == collateralToken) {
+                IUniswapV2Pair(collateralWethPair).swap(0, repayAmount, address(this), "");
+            } else {
+                IUniswapV2Pair(collateralWethPair).swap(repayAmount, 0, address(this), "");
+            }
+        }
 
         if (residualOut > 0) {
             IERC20(tokenOut).transfer(msg.sender, residualOut);
