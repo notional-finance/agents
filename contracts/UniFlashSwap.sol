@@ -121,7 +121,7 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
             ) = abi.decode(data, (bytes1, uint16, uint16, address, uint128));
             escrow.settleCashBalance(localCurrency, collateralCurrency, payer, value);
 
-            collateralCurrency = collateralId;
+            collateralId = collateralCurrency;
         } else if (action == 0x02) {
             (
                 /* bytes1 action */,
@@ -132,7 +132,7 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
             ) = abi.decode(data, (bytes1, uint16, uint16, address[], uint128[]));
             escrow.settleCashBalanceBatch(localCurrency, collateralCurrency, payers, values);
 
-            collateralCurrency = collateralId;
+            collateralId = collateralCurrency;
         } else if (action == 0x03) {
             (
                 /* bytes1 action */,
@@ -143,7 +143,7 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
             ) = abi.decode(data, (bytes1, address, uint128, uint16, uint16));
             escrow.liquidate(account, maxLiquidateAmount, localCurrency, collateralCurrency);
 
-            collateralCurrency = collateralId;
+            collateralId = collateralCurrency;
         } else if (action == 0x04) {
             (
                 /* bytes1 action */,
@@ -153,7 +153,7 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
             ) = abi.decode(data, (bytes1, address[], uint16, uint16));
             escrow.liquidateBatch(accounts, localCurrency, collateralCurrency);
 
-            collateralCurrency = collateralId;
+            collateralId = collateralCurrency;
         }
 
         (uint residualOut, uint repayAmount) = getRepayAmounts(amount0, amount1, tokenOut, initialTokenOutBalance, msg.sender);
@@ -164,10 +164,15 @@ contract UniFlashSwap is IUniswapV2Callee, Ownable {
             address collateralToken = escrow.currencyIdToAddress(collateralId);
             address collateralWethPair = factoryV2.getPair(collateralToken, WETH);
             address token0 = IUniswapV2Pair(collateralWethPair).token0();
+            (uint reserve0, uint reserve1, /* uint32 blockTime */) = IUniswapV2Pair(collateralWethPair).getReserves();
 
             if (token0 == collateralToken) {
+                uint collateralIn = UniswapV2Library.getAmountIn(repayAmount, reserve0, reserve1);
+                IERC20(collateralToken).transfer(collateralWethPair, collateralIn);
                 IUniswapV2Pair(collateralWethPair).swap(0, repayAmount, address(this), "");
             } else {
+                uint collateralIn = UniswapV2Library.getAmountIn(repayAmount, reserve1, reserve0);
+                IERC20(collateralToken).transfer(collateralWethPair, collateralIn);
                 IUniswapV2Pair(collateralWethPair).swap(repayAmount, 0, address(this), "");
             }
         }

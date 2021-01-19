@@ -45,6 +45,7 @@ describe('Liquidation', () => {
     tokenCollateral,
     collateralOnly,
     flashSwapTokenCollateral,
+    flashSwapDaiUSDC,
   ] = wallets
 
   const { escrow, portfolios } = ETHNodeClient.getClient().contracts
@@ -54,8 +55,10 @@ describe('Liquidation', () => {
 
   let dai: Currency
   let weth: Currency
+  let usdc: Currency
   let daiContract: IERC20
   let wethContract: IERC20
+  let usdcContract: IERC20
   let flashContract: UniFlashSwap
 
   beforeAll(async () => {
@@ -67,8 +70,10 @@ describe('Liquidation', () => {
 
     dai = GraphClient.getClient().getCurrencyBySymbol('DAI')
     weth = GraphClient.getClient().getCurrencyBySymbol('WETH')
+    usdc = GraphClient.getClient().getCurrencyBySymbol('USDC')
     daiContract = ETHNodeClient.getClient().getToken(dai.address)
     wethContract = ETHNodeClient.getClient().getToken(weth.address)
+    usdcContract = ETHNodeClient.getClient().getToken(usdc.address)
 
     if (process.env.RUN_SETUP) {
       flashContract = await setup(
@@ -77,6 +82,7 @@ describe('Liquidation', () => {
         tokenCollateral,
         collateralOnly,
         flashSwapTokenCollateral,
+        flashSwapDaiUSDC,
         parseEther('0.012'),
       )
       await delay(6000) // Wait for the graph to catch up
@@ -91,8 +97,8 @@ describe('Liquidation', () => {
 
   describe('liquidate routes', () => {
     it('shows liquidatable accounts', () => {
-      expect(allData.length).toBe(4)
-      expect(daiOnly.length).toBe(4)
+      expect(allData.length).toBe(5)
+      expect(daiOnly.length).toBe(5)
       expect(daiWeth.length).toBe(4)
 
       daiWeth.forEach((account: any) => {
@@ -135,7 +141,8 @@ describe('Liquidation', () => {
 
   describe('liquidate execution matches api', () => {
     it('liquidates each account', async () => {
-      const accounts = daiWeth.filter((a) => a.address !== flashSwapTokenCollateral.address.toLowerCase())
+      const accounts = daiWeth.filter((a) => a.address !== flashSwapTokenCollateral.address.toLowerCase()
+        && a.address !== flashSwapDaiUSDC.address.toLowerCase())
       expect(accounts.length).toBe(3)
 
       /* eslint-disable no-await-in-loop */
@@ -183,6 +190,29 @@ describe('Liquidation', () => {
       expect(fcAfter[0].gte(0)).toBe(true)
     })
 
+    it('liquidates via flash swap on a second pair', async () => {
+      const account = allData.find((a) => a.address === flashSwapDaiUSDC.address.toLowerCase())
+      const localRequired = BigNumber.from(account.pairs[0].localRequired)
+      const usdcBalanceBefore = await usdcContract.balanceOf(flashContract.address)
+
+      const { data } = await axios.get(
+        `http://localhost:7879/v1/liquiditySource/DAI/WETH?amountSold=${localRequired.toString()}`,
+      )
+      const uniswapPair = new Contract(data[0].address, IUniswapV2PairArtifact.abi, owner) as IUniswapV2Pair
+      const encodedData = ethers.utils.defaultAbiCoder.encode(
+        ['bytes1', 'address', 'uint128', 'uint16', 'uint16'],
+        ['0x03', account.address, 0, dai.id, usdc.id],
+      )
+      const localRequiredBuffer = localRequired.add(localRequired.mul(10).div(100))
+      await uniswapPair.swap(localRequiredBuffer, 0, flashContract.address, encodedData)
+
+      const wethBalanceAfter = await wethContract.balanceOf(flashContract.address)
+      const fcAfter = await portfolios.freeCollateralView(account.address)
+
+      expect(wethBalanceAfter.sub(usdcBalanceBefore).gte(0)).toBe(true)
+      expect(fcAfter[0].gte(0)).toBe(true)
+    })
+
     it('api should be updated with no liquidatable accounts', async () => {
       await delay(2000)
       const healthcheck = await axios.get('http://localhost:7879/healthcheck')
@@ -197,6 +227,7 @@ describe('Liquidation', () => {
     let allDataSettle
     let daiOnlySettle
     let daiWethSettle
+    let daiUSDCSettle
 
     beforeAll(async () => {
       const { cashMarket: cashMarketAddress } = await portfolios.getCashGroup(2)
@@ -215,17 +246,22 @@ describe('Liquidation', () => {
       ));
       ({ data: daiWethSettle } = await axios.get(
         `http://localhost:7879/${API_VERSION}/${LIQUIDATION_ROOT}/settlement/DAI/WETH`,
+      ));
+      ({ data: daiUSDCSettle } = await axios.get(
+        `http://localhost:7879/${API_VERSION}/${LIQUIDATION_ROOT}/settlement/DAI/USDC`,
       ))
     })
 
     it('has data at maturity', () => {
-      expect(allDataSettle).toHaveLength(3)
-      expect(daiOnlySettle).toHaveLength(3)
+      expect(allDataSettle).toHaveLength(4)
+      expect(daiOnlySettle).toHaveLength(4)
       expect(daiWethSettle).toHaveLength(3)
+      expect(daiUSDCSettle).toHaveLength(1)
     })
 
     it('settles each account', async () => {
-      const accounts = daiWethSettle.filter((a) => a.address !== flashSwapTokenCollateral.address.toLowerCase())
+      const accounts = daiWethSettle.filter((a) => a.address !== flashSwapTokenCollateral.address.toLowerCase()
+        && a.address !== flashSwapDaiUSDC.address.toLowerCase())
       expect(accounts.length).toBe(2)
 
       /* eslint-disable no-await-in-loop */
