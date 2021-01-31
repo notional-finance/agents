@@ -1,4 +1,5 @@
 import {
+  BigNumber,
   Contract, ContractFactory, ethers, Wallet,
 } from 'ethers'
 import { config } from 'dotenv'
@@ -17,9 +18,9 @@ const kovanAddress = {
   wethAddress: '0xd0a1e359811322d97991e03f863a0c30c2cf029c',
 }
 
-async function deployContract(owner: Wallet, artifact: any, args: any[]) {
+async function deployContract(owner: Wallet, artifact: any, args: any[], gasPrice?: BigNumber) {
   const factory = new ContractFactory(artifact.abi, artifact.bytecode, owner)
-  const txn = factory.getDeployTransaction(...args)
+  const txn = factory.getDeployTransaction(...args, { gasPrice })
   console.log(`Deploying ${artifact.contractName} with owner ${owner.address}`)
   const receipt = await (await owner.sendTransaction(txn)).wait()
   const contract = new Contract(receipt.contractAddress as string, artifact.abi, owner)
@@ -44,10 +45,12 @@ async function main() {
     throw new Error('Unknown network')
   }
 
+  const gasPrice = ethers.utils.parseUnits(process.env.GAS_PRICE as string, 'gwei')
+
   const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL as string)
   const owner = new Wallet(process.env.CONTRACT_OWNER_PK as string, provider)
   const flashSwapContract = await deployContract(owner, UniFlashSwapArtifact,
-    [uniswapFactoryV2Address, escrowAddress, wethAddress])
+    [uniswapFactoryV2Address, escrowAddress, wethAddress], gasPrice)
   // Must enable token allowance for Escrow contract
   console.log('Enabling DAI and USDC tokens on flashSwap contract')
   await (await flashSwapContract.enableToken(daiAddress, ethers.constants.MaxUint256)).wait(3)
