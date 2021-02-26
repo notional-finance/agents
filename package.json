@@ -23,7 +23,8 @@
     "test:watch": "yarn run jest --selectProjects unit --config=jest.config.js --watch",
     "test:integration": "./start.sh && export RUN_SETUP=true && jest --runInBand --selectProjects integration --config=jest.config.js --detectOpenHandles",
     "test:integration:run": "jest --config=jest.config.js --runInBand --selectProjects integration --detectOpenHandles",
-    "deploy:flashswap:kovan": "DOTENV_CONFIG_PATH=.env.kovan yarn run ts-node -r tsconfig-paths/register contracts/deploy.ts"
+    "deploy:flashswap:kovan": "DOTENV_CONFIG_PATH=.env.kovan yarn run ts-node -r tsconfig-paths/register contracts/deploy.ts",
+    "deploy:flashswap:mainnet": "DOTENV_CONFIG_PATH=.env.mainnet yarn run ts-node -r tsconfig-paths/register contracts/deploy.ts"
   },
   "engines": {
     "node": ">=12.0.0"
