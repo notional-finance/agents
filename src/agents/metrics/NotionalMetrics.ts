@@ -26,6 +26,11 @@ const NotionalMetrics = {
       labelNames: ['currencyPair'],
       registers: [NotionalMetricsRegistry],
     }),
+    LOW_COLLATERAL: new client.Gauge({
+      name: 'notional_accounts_low_collateral_current',
+      help: 'total accounts with buffered ratio below 150',
+      registers: [NotionalMetricsRegistry],
+    }),
     SETTLE_FCASH: new client.Gauge({
       name: 'notional_accounts_settle_fcash_current',
       help: 'total current accounts that must be settled via fCash',

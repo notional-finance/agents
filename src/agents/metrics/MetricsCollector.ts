@@ -4,12 +4,13 @@ import ETHNodeClient from 'core/services/ETHNodeClient'
 import GraphClient from 'core/services/GraphClient'
 import LiquidationController from 'agents/liquidator/Controller'
 import client from 'prom-client'
-import { Currency } from 'core/model/Schema'
+import { Account, Currency } from 'core/model/Schema'
 import { BigNumber } from 'ethers'
 import { formatUnits } from 'ethers/lib/utils'
 import { convertToETH } from 'core/lib/ExchangeRate'
 import { AssetType } from 'core/model/GraphTypes'
 import { FCashPurchase } from 'agents/liquidator/Schema'
+import { calculateFreeCollateral } from 'core/lib/FreeCollateral'
 import NotionalMetrics, { NotionalMetricsRegistry } from './NotionalMetrics'
 
 const appLogger = log4js.getLogger('app')
@@ -276,6 +277,23 @@ class MetricsCollector {
     })
   }
 
+  private static lowCollateralThreshold(allAccounts: Account[] | undefined) {
+    if (!allAccounts) return 0
+
+    return allAccounts.filter((account) => {
+      const {
+        netETHCollateral,
+        netETHDebtWithBuffer,
+      } = calculateFreeCollateral(account.portfolio, account.balances)
+
+      if (netETHDebtWithBuffer.isZero()) return false
+      const bufferedRatio = netETHCollateral.mul(100).div(netETHDebtWithBuffer)
+
+      // A buffered ratio of 150 is about a collateral ratio of 210 with a 1.4 buffer
+      return bufferedRatio.lt(150)
+    }).length
+  }
+
   private static async fetchAccountGauges() {
     const [
       allAccounts,
@@ -290,9 +308,12 @@ class MetricsCollector {
     // Reset these metrics here to clear the previous counts
     NotionalMetrics.ACCOUNTS.LIQUIDATABLE.reset()
     NotionalMetrics.ACCOUNTS.SETTLEABLE.reset()
+    NotionalMetrics.ACCOUNTS.LOW_COLLATERAL.reset()
 
     NotionalMetrics.ACCOUNTS.TOTAL.set(allAccounts!.length)
     NotionalMetrics.ACCOUNTS.LIQUIDATABLE.set(liquidatable!.length)
+    NotionalMetrics.ACCOUNTS.LOW_COLLATERAL.set(MetricsCollector.lowCollateralThreshold(allAccounts))
+
     MetricsCollector.countCurrencyPairs(liquidatable, NotionalMetrics.ACCOUNTS.LIQUIDATABLE, false)
     MetricsCollector.countCurrencyPairs(settleable, NotionalMetrics.ACCOUNTS.SETTLEABLE, false)
     MetricsCollector.countCurrencyPairs(liquidatable, NotionalMetrics.ACCOUNTS.LIQUIDATE_FCASH, true)

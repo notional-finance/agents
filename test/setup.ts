@@ -29,9 +29,13 @@ async function setupEnvironment() {
   logger.info('Graph client initialized')
 
   const dai = GraphClient.getClient().getCurrencyBySymbol('DAI')
+  const usdc = GraphClient.getClient().getCurrencyBySymbol('USDC')
+  const weth = GraphClient.getClient().getCurrencyBySymbol('WETH')
 
   return {
     dai,
+    usdc,
+    weth,
   }
 }
 
@@ -68,18 +72,23 @@ async function deployUniswap(
   // This is set here if there is no uniswap exchange defined
   const wethAddress = GraphClient.getClient().getCurrencyBySymbol('WETH').address
   const dai = GraphClient.getClient().getCurrencyBySymbol('DAI')
+  const usdc = GraphClient.getClient().getCurrencyBySymbol('USDC')
   const daiContract = ETHNodeClient.getClient().getToken(dai.address)
+  const usdcContract = ETHNodeClient.getClient().getToken(usdc.address)
   const { uniswapFactory, uniswapRouter } = await deployPrerequisites(owner)
 
   logger.info('Deploying mock uniswap')
   await uniswapFactory.connect(owner).createPair(dai.address, wethAddress)
-  logger.info('Uniswap pair deployed to', await uniswapFactory.getPair(dai.address, wethAddress))
+  logger.info('Uniswap DAI/ETH pair deployed to', await uniswapFactory.getPair(dai.address, wethAddress))
+  await uniswapFactory.connect(owner).createPair(dai.address, usdc.address)
+  logger.info('Uniswap USDC/ETH pair deployed to', await uniswapFactory.getPair(dai.address, wethAddress))
 
   const tokenBalance = seedEthBalance
     .mul(ethers.constants.WeiPerEther)
     .div(initialExchangeRate)
 
   await daiContract.connect(owner).approve(uniswapRouter.address, parseEther('100000000'))
+  await usdcContract.connect(owner).approve(uniswapRouter.address, parseEther('100000000'))
 
   // This is required in ganache to get the block timestamp correct.
   logger.info('Resetting network timestamp')
@@ -88,11 +97,25 @@ async function deployUniswap(
   const currentBlock = await owner.provider.getBlock(await owner.provider.getBlockNumber())
 
   // Setup the liquidity pool
-  logger.info('Seeding mock uniswap pool')
+  logger.info('Seeding DAI/ETH mock uniswap pool')
   await uniswapRouter.connect(owner).addLiquidityETH(
     dai.address,
     tokenBalance,
     tokenBalance,
+    seedEthBalance,
+    await uniswapRouter.signer.getAddress(),
+    currentBlock.timestamp + 10000,
+    { value: seedEthBalance },
+  )
+
+  logger.info('Seeding USDC/ETH mock uniswap pool')
+  const tokenBalanceUSDC = seedEthBalance
+    .mul(BigNumber.from(1e6))
+    .div(parseEther('0.01'))
+  await uniswapRouter.connect(owner).addLiquidityETH(
+    usdc.address,
+    tokenBalanceUSDC,
+    tokenBalanceUSDC,
     seedEthBalance,
     await uniswapRouter.signer.getAddress(),
     currentBlock.timestamp + 10000,
@@ -105,7 +128,9 @@ async function deployUniswap(
 }
 
 async function deployFlashContract(owner: Wallet, uniswapFactory: UniswapV2Factory, escrow: Escrow) {
-  return await deployContract(owner, UniFlashSwapArtifact, [uniswapFactory.address, escrow.address]) as UniFlashSwap
+  const wethAddress = GraphClient.getClient().getCurrencyBySymbol('WETH').address
+  return await deployContract(owner, UniFlashSwapArtifact,
+    [uniswapFactory.address, escrow.address, wethAddress]) as UniFlashSwap
 }
 
 async function setup(
@@ -114,12 +139,18 @@ async function setup(
   tokenCollateral: Wallet,
   collateralOnly: Wallet,
   flashSwapTokenCollateral: Wallet,
+  flashSwapDaiUSDC: Wallet,
   finalExchangeRate: BigNumber,
 ) {
-  const { dai } = await setupEnvironment()
+  const { dai, usdc, weth } = await setupEnvironment()
 
   const { escrow, portfolios } = ETHNodeClient.getClient().contracts
   const daiContract = ETHNodeClient.getClient().getToken(dai.address)
+  const usdcContract = ETHNodeClient.getClient().getToken(usdc.address)
+  const usdcOracle = new Contract(usdc.rateOracle, MockAggregatorArtifact.abi, owner) as MockAggregator
+  await usdcOracle.setAnswer(parseEther('0.01'))
+  // Need to send some eth to init uniswap
+  await tokenOnly.sendTransaction({ to: owner.address, value: parseEther('90000') })
 
   const { uniswapFactory } = await deployUniswap(owner, parseEther('90000'), finalExchangeRate)
 
@@ -140,6 +171,10 @@ async function setup(
   await daiContract.connect(tokenCollateral).approve(escrow.address, parseEther('100000'))
   await daiContract.connect(flashSwapTokenCollateral).approve(escrow.address, parseEther('100000'))
 
+  // To be used to collateralize the dai debt position
+  await usdcContract.connect(owner).transfer(flashSwapDaiUSDC.address, parseEther('1000'))
+  await usdcContract.connect(flashSwapDaiUSDC).approve(escrow.address, parseEther('100000'))
+
   logger.info('Depositing DAI')
   await escrow.connect(tokenOnly).deposit(dai.address, parseEther('1000'))
   await escrow.connect(tokenCollateral).deposit(dai.address, parseEther('100'))
@@ -150,6 +185,7 @@ async function setup(
   await escrow.connect(tokenCollateral).depositEth({ value: parseEther('14') })
   await escrow.connect(flashSwapTokenCollateral).depositEth({ value: parseEther('14') })
   await escrow.connect(collateralOnly).depositEth({ value: parseEther('14') })
+  await escrow.connect(flashSwapDaiUSDC).depositEth({ value: parseEther('14') })
 
   logger.info('Providing Liquidity')
   await cashMarket.connect(tokenOnly).addLiquidity(
@@ -180,6 +216,7 @@ async function setup(
   )
 
   // Requires 140 Dai
+  logger.info('Borrowing')
   await cashMarket.connect(tokenOnly).takeCurrentCash(
     maturities[1],
     parseEther('900'),
@@ -210,6 +247,15 @@ async function setup(
     100_000_000,
   )
 
+  // Requires 1400 Dai
+  logger.info('Flash swap borrow')
+  await cashMarket.connect(flashSwapDaiUSDC).takeCurrentCash(
+    maturities[1],
+    parseEther('1000'),
+    getNowSeconds() + 10000,
+    100_000_000,
+  )
+
   logger.info('Withdrawing')
   let balance: BigNumber
   balance = await escrow.cashBalances(dai.id, tokenOnly.address)
@@ -223,7 +269,15 @@ async function setup(
 
   balance = await escrow.cashBalances(dai.id, collateralOnly.address)
   await escrow.connect(collateralOnly).withdraw(dai.address, balance)
+
+  balance = await escrow.cashBalances(dai.id, flashSwapDaiUSDC.address)
+  await escrow.connect(flashSwapDaiUSDC).withdraw(dai.address, balance)
   logger.info('Done')
+
+  logger.info('Flash swap deposit usdc')
+  await escrow.connect(flashSwapDaiUSDC).deposit(usdc.address, BigNumber.from(1500e6))
+  logger.info('Flash swap withdraw eth')
+  await escrow.connect(flashSwapDaiUSDC).withdraw(weth.address, parseEther('14'))
 
   const daiOracle = new Contract(dai.rateOracle, MockAggregatorArtifact.abi, owner) as MockAggregator
   await daiOracle.setAnswer(finalExchangeRate)

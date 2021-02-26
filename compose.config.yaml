@@ -17,9 +17,10 @@ liquiditySources:
   - name: uniswapFlashLoan
     type: UNI_FlashSwap
     params:
-      factory: '0x6f84742680311CEF5ba42bc10A71a4708b4561d1'
+      factory: '0xC5aFE31AE505594B190AC71EA689B58139d1C354'
       pairs:
         - DAI-WETH
+        - USDC-WETH
   - name: walletSource
     type: Wallet
     params:
